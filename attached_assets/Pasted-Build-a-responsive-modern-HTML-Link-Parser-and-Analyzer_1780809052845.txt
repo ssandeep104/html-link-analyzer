@@ -1,0 +1,37 @@
+Build a responsive, modern HTML Link Parser and Analyzer web application using a Python FastAPI backend and a responsive Tailwind CSS frontend (single-page application).
+
+The application should run completely locally and rely on classical HTML parsing (no AI capabilities required).
+
+### Core Features:
+1. Dual Input Channels:
+   - URL Input: Backend fetches the URL using the 'requests' library (include a standard browser User-Agent header) and parses it.
+   - HTML File Upload: Accept uploaded local `.html` or `.htm` files.
+
+2. Smart Link Parsing Heuristics:
+   - Extract all <a> tags from the HTML.
+   - Resolve relative URLs into absolute URLs using the fetched URL or user-supplied Base URL.
+   - Categorize each link into one of four types:
+     - Internal: Links pointing to the same host domain.
+     - External: Outbound links pointing to other domains.
+     - Anchor/Page Section: Hash links (e.g., #features).
+     - Special Protocol: Shortcuts like mailto:, tel:, or javascript:.
+   - Structural Context Grouping: Identify major semantic zones by walking up DOM ancestor nodes to find tags like <header>, <nav>, <footer>, <aside>, <main>, <section>, or <article> (or divs with matching classes/ids).
+   - Preceding Heading Association: For each link, find its nearest preceding heading element (<h1> to <h6>) inside its semantic container. Restrict heading lookups to the same semantic container so footer links don't get associated with headings from the main body.
+
+3. Frontend Dashboard UI/UX:
+   - Polished, responsive single-page layout using Tailwind CSS.
+   - Metrics Dashboard: Show summary counters for Total Links, Internal, External, Anchors, and Special Protocols.
+   - Search & Filtering: Real-time search by text or URL, plus dropdown filter by Link Type.
+   - Two Layout Modes:
+     - Grouped Tree View: A collapsible folder layout showing Page Section -> Heading Context -> List of matching links.
+     - Flat List View: A standard searchable table listing ID, Text, Href, Type, and Position.
+
+4. Export Options (Generated client-side for speed):
+   - CSV Download: Download a spreadsheet of the currently filtered links.
+   - JSON Download: Download the raw parsed data structure.
+   - Standalone HTML Report: Download a single, self-contained HTML file containing the filtered datatable and a lightweight JS search script, allowing the user to open and browse their links offline.
+
+### File Structure:
+- `main.py`: FastAPI backend handling routes ('/' to serve frontend, and POST '/api/parse' to accept URL or file and return JSON).
+- `parser.py`: Separation of concerns. Move BeautifulSoup4 extraction, classification, and structural grouping logic here.
+- `templates/index.html`: Polished frontend UI and JS state engine.

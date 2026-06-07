@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "HTML Link Parser & Analyzer"
+version = "1.0.0"
+id = "artifacts/link-parser"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 5000
+
+[services.development]
+run = "pnpm --filter @workspace/link-parser run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/link-parser", "run", "build" ]
+publicDir = "artifacts/link-parser/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "5000"
+BASE_PATH = "/"

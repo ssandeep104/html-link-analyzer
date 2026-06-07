@@ -1,15 +1,16 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: HTML Link Parser and Analyzer API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: parser
+    description: Link parsing operations
 paths:
   /healthz:
     get:
@@ -24,6 +25,62 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /parse/url:
+    post:
+      operationId: parseUrl
+      tags: [parser]
+      summary: Parse links from a URL
+      description: Fetches a URL and extracts all links with categorization and structural context
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParseUrlInput"
+      responses:
+        "200":
+          description: Parsed link results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParseResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Failed to fetch URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /parse/file:
+    post:
+      operationId: parseFile
+      tags: [parser]
+      summary: Parse links from HTML content
+      description: Accepts raw HTML content as a string and extracts all links
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParseFileInput"
+      responses:
+        "200":
+          description: Parsed link results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParseResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +90,139 @@ components:
           type: string
       required:
         - status
-
+    ParseUrlInput:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          description: The URL to fetch and parse
+    ParseFileInput:
+      type: object
+      required:
+        - html_content
+      properties:
+        html_content:
+          type: string
+          description: Raw HTML content string to parse
+        filename:
+          type: ["string", "null"]
+          description: Optional filename for display purposes
+        base_url:
+          type: ["string", "null"]
+          description: Optional base URL for resolving relative links
+    ParseResult:
+      type: object
+      required:
+        - source
+        - base_url
+        - links
+        - metrics
+        - grouped
+      properties:
+        source:
+          type: string
+          description: The source identifier (URL or filename)
+        base_url:
+          type: string
+          description: Base URL used for resolving relative links
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParsedLink"
+        metrics:
+          $ref: "#/components/schemas/LinkMetrics"
+        grouped:
+          type: array
+          items:
+            $ref: "#/components/schemas/GroupedSection"
+    ParsedLink:
+      type: object
+      required:
+        - id
+        - text
+        - href
+        - resolved_href
+        - type
+        - section
+        - heading
+        - position
+      properties:
+        id:
+          type: integer
+          description: Sequential link ID
+        text:
+          type: string
+          description: Visible link text
+        href:
+          type: string
+          description: Original href attribute
+        resolved_href:
+          type: string
+          description: Absolute resolved URL
+        type:
+          type: string
+          enum: [internal, external, anchor, special]
+          description: Link category
+        section:
+          type: ["string", "null"]
+          description: Semantic section the link belongs to (header, nav, main, footer, etc.)
+        heading:
+          type: ["string", "null"]
+          description: Nearest preceding heading in the same section
+        position:
+          type: integer
+          description: DOM order position of the link
+    LinkMetrics:
+      type: object
+      required:
+        - total
+        - internal
+        - external
+        - anchor
+        - special
+      properties:
+        total:
+          type: integer
+        internal:
+          type: integer
+        external:
+          type: integer
+        anchor:
+          type: integer
+        special:
+          type: integer
+    GroupedSection:
+      type: object
+      required:
+        - section
+        - headings
+      properties:
+        section:
+          type: string
+          description: Name of the semantic section
+        headings:
+          type: array
+          items:
+            $ref: "#/components/schemas/HeadingGroup"
+    HeadingGroup:
+      type: object
+      required:
+        - heading
+        - links
+      properties:
+        heading:
+          type: ["string", "null"]
+          description: Heading text (null if no heading)
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParsedLink"
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
