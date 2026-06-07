@@ -69,8 +69,9 @@ export const ParseUrlResponse = zod.object({
  * @summary Parse links from HTML content
  */
 export const ParseFileBody = zod.object({
-  "html_content": zod.string().describe('Raw HTML content string to parse'),
-  "filename": zod.string().nullish().describe('Optional filename for display purposes'),
+  "html_content": zod.string().nullish().describe('Raw HTML content string to parse (for .html\/.htm files)'),
+  "file_content_b64": zod.string().nullish().describe('Base64-encoded file content (for binary formats like .webarchive)'),
+  "filename": zod.string().nullish().describe('Optional filename for display purposes and format detection'),
   "base_url": zod.string().nullish().describe('Optional base URL for resolving relative links')
 })
 

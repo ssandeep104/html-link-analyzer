@@ -1,10 +1,11 @@
 import os
+import base64
 import requests as http_requests
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
-from parser import parse_html
+from parser import parse_html, extract_webarchive_html
 
 app = FastAPI(title="HTML Link Parser API", version="1.0.0")
 
@@ -32,7 +33,8 @@ class ParseUrlRequest(BaseModel):
 
 
 class ParseFileRequest(BaseModel):
-    html_content: str
+    html_content: Optional[str] = None
+    file_content_b64: Optional[str] = None
     filename: Optional[str] = None
     base_url: Optional[str] = None
 
@@ -73,12 +75,30 @@ def parse_url(body: ParseUrlRequest):
 
 @app.post("/api/parse/file")
 def parse_file(body: ParseFileRequest):
-    if not body.html_content or not body.html_content.strip():
-        raise HTTPException(status_code=400, detail="html_content is required")
-    base_url = body.base_url or ""
-    result = parse_html(body.html_content, base_url)
+    filename = body.filename or "uploaded-file.html"
+    is_webarchive = filename.lower().endswith(".webarchive")
+
+    if is_webarchive:
+        if not body.file_content_b64:
+            raise HTTPException(status_code=400, detail="file_content_b64 is required for .webarchive files")
+        try:
+            raw_bytes = base64.b64decode(body.file_content_b64)
+        except Exception:
+            raise HTTPException(status_code=400, detail="file_content_b64 is not valid base64")
+        try:
+            html_content, detected_url = extract_webarchive_html(raw_bytes)
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+        base_url = body.base_url or detected_url or ""
+    else:
+        if not body.html_content or not body.html_content.strip():
+            raise HTTPException(status_code=400, detail="html_content is required for HTML files")
+        html_content = body.html_content
+        base_url = body.base_url or ""
+
+    result = parse_html(html_content, base_url)
     return {
-        "source": body.filename or "uploaded-file.html",
+        "source": filename,
         "base_url": base_url,
         **result,
     }

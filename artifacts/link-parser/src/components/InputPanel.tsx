@@ -49,24 +49,51 @@ export function InputPanel({ onParse }: InputPanelProps) {
     e.preventDefault();
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      parseFileMutation.mutate(
-        { data: { html_content: content, filename: file.name } },
-        {
-          onSuccess: (res) => onParse(res),
-          onError: (err) => {
-            toast({
-              variant: "destructive",
-              title: "Parsing Failed",
-              description: err.error?.error || "Failed to parse file",
-            });
+    const isWebArchive = file.name.toLowerCase().endsWith(".webarchive");
+
+    if (isWebArchive) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const arrayBuffer = e.target?.result as ArrayBuffer;
+        const bytes = new Uint8Array(arrayBuffer);
+        let binary = "";
+        for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+        const b64 = btoa(binary);
+        parseFileMutation.mutate(
+          { data: { file_content_b64: b64, filename: file.name } },
+          {
+            onSuccess: (res) => onParse(res),
+            onError: (err) => {
+              toast({
+                variant: "destructive",
+                title: "Parsing Failed",
+                description: err.error?.error || "Failed to parse file",
+              });
+            }
           }
-        }
-      );
-    };
-    reader.readAsText(file);
+        );
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        parseFileMutation.mutate(
+          { data: { html_content: content, filename: file.name } },
+          {
+            onSuccess: (res) => onParse(res),
+            onError: (err) => {
+              toast({
+                variant: "destructive",
+                title: "Parsing Failed",
+                description: err.error?.error || "Failed to parse file",
+              });
+            }
+          }
+        );
+      };
+      reader.readAsText(file);
+    }
   };
 
   return (
@@ -79,7 +106,7 @@ export function InputPanel({ onParse }: InputPanelProps) {
                 <Search className="w-5 h-5 text-muted-foreground" />
                 Target Source
               </h2>
-              <p className="text-sm text-muted-foreground">Select a URL or local HTML file to analyze its links structure.</p>
+              <p className="text-sm text-muted-foreground">Select a URL, HTML file, or Safari Web Archive to analyze its links structure.</p>
             </div>
             <TabsList className="bg-muted/50 border border-border/50">
               <TabsTrigger value="url" className="gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm">
@@ -137,7 +164,7 @@ export function InputPanel({ onParse }: InputPanelProps) {
                   ref={fileInputRef} 
                   onChange={handleFileChange} 
                   className="hidden" 
-                  accept=".html,.htm" 
+                  accept=".html,.htm,.webarchive" 
                 />
                 
                 <div className="flex flex-col items-center gap-2">
@@ -151,8 +178,8 @@ export function InputPanel({ onParse }: InputPanelProps) {
                     </div>
                   ) : (
                     <div>
-                      <p className="font-medium text-foreground">Click or drag HTML file here</p>
-                      <p className="text-xs text-muted-foreground mt-1">Supports .html, .htm</p>
+                      <p className="font-medium text-foreground">Click or drag file here</p>
+                      <p className="text-xs text-muted-foreground mt-1">Supports .html, .htm, .webarchive</p>
                     </div>
                   )}
                 </div>

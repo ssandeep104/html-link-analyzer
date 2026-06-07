@@ -100,15 +100,16 @@ components:
           description: The URL to fetch and parse
     ParseFileInput:
       type: object
-      required:
-        - html_content
       properties:
         html_content:
-          type: string
-          description: Raw HTML content string to parse
+          type: ["string", "null"]
+          description: Raw HTML content string to parse (for .html/.htm files)
+        file_content_b64:
+          type: ["string", "null"]
+          description: Base64-encoded file content (for binary formats like .webarchive)
         filename:
           type: ["string", "null"]
-          description: Optional filename for display purposes
+          description: Optional filename for display purposes and format detection
         base_url:
           type: ["string", "null"]
           description: Optional base URL for resolving relative links

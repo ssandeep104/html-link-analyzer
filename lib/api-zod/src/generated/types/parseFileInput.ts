@@ -7,10 +7,18 @@
  */
 
 export interface ParseFileInput {
-  /** Raw HTML content string to parse */
-  html_content: string;
   /**
-     * Optional filename for display purposes
+     * Raw HTML content string to parse (for .html/.htm files)
+     * @nullable
+     */
+  html_content?: string | null;
+  /**
+     * Base64-encoded file content (for binary formats like .webarchive)
+     * @nullable
+     */
+  file_content_b64?: string | null;
+  /**
+     * Optional filename for display purposes and format detection
      * @nullable
      */
   filename?: string | null;

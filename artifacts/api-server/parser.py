@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urlparse, urljoin, urlunparse
 from typing import Optional
 import re
+import plistlib
 
 
 SEMANTIC_TAGS = {"header", "nav", "footer", "aside", "main", "section", "article"}
@@ -86,6 +87,35 @@ def find_section_node(element):
         node = node.parent
     # fall back to root
     return element.find_parent()
+
+
+def extract_webarchive_html(data: bytes) -> tuple[str, str]:
+    """
+    Parse a Safari Web Archive (plist) and return (html_content, base_url).
+    Supports both binary and XML plist formats.
+    """
+    try:
+        plist = plistlib.loads(data)
+    except Exception as e:
+        raise ValueError(f"Could not parse .webarchive file as a property list: {e}")
+
+    main = plist.get("WebMainResource")
+    if not main:
+        raise ValueError("No WebMainResource found in the .webarchive file")
+
+    mime = main.get("WebResourceMIMEType", "")
+    if mime and not mime.startswith("text/html"):
+        raise ValueError(f"Main resource MIME type is '{mime}', expected text/html")
+
+    raw_data = main.get("WebResourceData", b"")
+    encoding = main.get("WebResourceTextEncodingName", "utf-8") or "utf-8"
+    try:
+        html_content = raw_data.decode(encoding, errors="replace")
+    except (LookupError, AttributeError):
+        html_content = raw_data.decode("utf-8", errors="replace")
+
+    base_url = main.get("WebResourceURL", "") or ""
+    return html_content, base_url
 
 
 def parse_html(html_content: str, base_url: str) -> dict:
