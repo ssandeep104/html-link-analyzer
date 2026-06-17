@@ -30,6 +30,9 @@ jobs:
       - name: Typecheck
         run: pnpm run typecheck
 
+      - name: Build parser-core
+        run: pnpm --filter @workspace/parser-core run build
+
       - name: Typecheck API
         run: pnpm --filter @workspace/api run typecheck
 

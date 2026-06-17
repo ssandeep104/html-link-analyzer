@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "pnpm install --frozen-lockfile=false",
-  "buildCommand": "pnpm --filter @workspace/link-parser run build",
+  "buildCommand": "pnpm --filter @workspace/parser-core run build && pnpm --filter @workspace/link-parser run build",
   "outputDirectory": "artifacts/link-parser/dist",
   "functions": {
     "api/**/*.ts": {
