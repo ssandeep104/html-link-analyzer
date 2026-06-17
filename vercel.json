@@ -1,0 +1,27 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "pnpm install --frozen-lockfile=false",
+  "buildCommand": "pnpm --filter @workspace/link-parser run build",
+  "outputDirectory": "artifacts/link-parser/dist",
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "@vercel/node@3.2.29",
+      "memory": 1024,
+      "maxDuration": 15
+    }
+  },
+  "rewrites": [
+    { "source": "/api/parse/url", "destination": "/api/parse/url" },
+    { "source": "/api/parse/file", "destination": "/api/parse/file" },
+    { "source": "/api/healthz", "destination": "/api/healthz" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, max-age=0" }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { forwardRef, useImperativeHandle, useState, useRef } from "react";
 import { useParseUrl, useParseFile, ParseResult } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,17 +12,42 @@ interface InputPanelProps {
   onParse: (result: ParseResult) => void;
 }
 
-export function InputPanel({ onParse }: InputPanelProps) {
+export interface InputPanelHandle {
+  /** Programmatically populate the URL field and submit. */
+  setUrlAndSubmit: (url: string) => void;
+}
+
+export const InputPanel = forwardRef<InputPanelHandle, InputPanelProps>(
+  function InputPanel({ onParse }, ref) {
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const { toast } = useToast();
   const parseUrlMutation = useParseUrl();
   const parseFileMutation = useParseFile();
 
   const isPending = parseUrlMutation.isPending || parseFileMutation.isPending;
+
+  useImperativeHandle(ref, () => ({
+    setUrlAndSubmit: (newUrl: string) => {
+      setUrl(newUrl);
+      parseUrlMutation.mutate(
+        { data: { url: newUrl } },
+        {
+          onSuccess: (res) => onParse(res),
+          onError: (err) => {
+            toast({
+              variant: "destructive",
+              title: "Parsing Failed",
+              description: err.data?.error || "Failed to parse URL",
+            });
+          },
+        },
+      );
+    },
+  }));
 
   const handleUrlSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +59,7 @@ export function InputPanel({ onParse }: InputPanelProps) {
         toast({
           variant: "destructive",
           title: "Parsing Failed",
-          description: err.error?.error || "Failed to parse URL",
+          description: err.data?.error || "Failed to parse URL",
         });
       }
     });
@@ -67,7 +92,7 @@ export function InputPanel({ onParse }: InputPanelProps) {
               toast({
                 variant: "destructive",
                 title: "Parsing Failed",
-                description: err.error?.error || "Failed to parse file",
+                description: err.data?.error || "Failed to parse file",
               });
             }
           }
@@ -86,7 +111,7 @@ export function InputPanel({ onParse }: InputPanelProps) {
               toast({
                 variant: "destructive",
                 title: "Parsing Failed",
-                description: err.error?.error || "Failed to parse file",
+                description: err.data?.error || "Failed to parse file",
               });
             }
           }
@@ -141,7 +166,7 @@ export function InputPanel({ onParse }: InputPanelProps) {
                <Alert variant="destructive" className="mt-4 bg-destructive/10 text-destructive border-destructive/20">
                  <AlertCircle className="h-4 w-4" />
                  <AlertTitle>Error</AlertTitle>
-                 <AlertDescription>{parseUrlMutation.error?.error?.error || "An unknown error occurred"}</AlertDescription>
+                 <AlertDescription>{parseUrlMutation.error?.data?.error || "An unknown error occurred"}</AlertDescription>
                </Alert>
             )}
           </TabsContent>
@@ -195,7 +220,7 @@ export function InputPanel({ onParse }: InputPanelProps) {
                <Alert variant="destructive" className="mt-4 bg-destructive/10 text-destructive border-destructive/20">
                  <AlertCircle className="h-4 w-4" />
                  <AlertTitle>Error</AlertTitle>
-                 <AlertDescription>{parseFileMutation.error?.error?.error || "An unknown error occurred"}</AlertDescription>
+                 <AlertDescription>{parseFileMutation.error?.data?.error || "An unknown error occurred"}</AlertDescription>
                </Alert>
             )}
           </TabsContent>
@@ -203,4 +228,5 @@ export function InputPanel({ onParse }: InputPanelProps) {
       </CardContent>
     </Card>
   );
-}
+  },
+);
