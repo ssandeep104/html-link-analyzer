@@ -81,6 +81,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /parse/list:
+    post:
+      operationId: parseList
+      tags: [parser]
+      summary: Parse a freeform list of URLs
+      description: |
+        Accepts a multi-line dump of URLs (one per line, tolerant of bullets,
+        numbering, markdown links, and surrounding whitespace) and returns the
+        same ParseResult shape as the HTML endpoints, with `grouped_by_domain`
+        as the primary view. No DOM is involved so `grouped` will be empty.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParseListInput"
+      responses:
+        "200":
+          description: Parsed link results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParseResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -113,6 +142,20 @@ components:
         base_url:
           type: ["string", "null"]
           description: Optional base URL for resolving relative links
+    ParseListInput:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          description: Multi-line dump of URLs, one per line
+        source:
+          type: ["string", "null"]
+          description: Optional display label for the result (e.g. "clipboard")
+        base_url:
+          type: ["string", "null"]
+          description: Optional base URL for resolving relative entries
     ParseResult:
       type: object
       required:
@@ -121,6 +164,7 @@ components:
         - links
         - metrics
         - grouped
+        - grouped_by_domain
       properties:
         source:
           type: string
@@ -138,6 +182,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/GroupedSection"
+        grouped_by_domain:
+          type: array
+          items:
+            $ref: "#/components/schemas/DomainGroup"
     ParsedLink:
       type: object
       required:
@@ -149,6 +197,8 @@ components:
         - section
         - heading
         - position
+        - host
+        - domain
       properties:
         id:
           type: integer
@@ -175,6 +225,12 @@ components:
         position:
           type: integer
           description: DOM order position of the link
+        host:
+          type: string
+          description: Full hostname of the resolved URL ("" for anchors / non-HTTP schemes)
+        domain:
+          type: string
+          description: Registrable domain ("" for anchors / non-HTTP schemes)
     LinkMetrics:
       type: object
       required:
@@ -183,6 +239,7 @@ components:
         - external
         - anchor
         - special
+        - unique_domains
       properties:
         total:
           type: integer
@@ -194,6 +251,31 @@ components:
           type: integer
         special:
           type: integer
+        unique_domains:
+          type: integer
+          description: Number of distinct registrable domains across all links
+    DomainGroup:
+      type: object
+      required:
+        - domain
+        - hosts
+        - count
+        - links
+      properties:
+        domain:
+          type: string
+          description: Registrable domain (e.g. "github.com"). Empty string buckets links with no host.
+        hosts:
+          type: array
+          items:
+            type: string
+          description: Distinct hostnames seen under this domain
+        count:
+          type: integer
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParsedLink"
     GroupedSection:
       type: object
       required:

@@ -67,7 +67,7 @@ export default function Home() {
               </div>
               <h2 className="text-xl font-semibold mb-2">Ready to Analyze</h2>
               <p className="text-muted-foreground mb-6 text-sm max-w-md mx-auto">
-                Enter a URL or upload an HTML file to extract, categorize, and inspect all links within the document.
+                Paste a list of URLs, fetch a single page, or upload an HTML file. Links are grouped by destination domain so you can see what sites a dump actually points to.
               </p>
               <div className="bg-background/50 border border-border/50 rounded-lg p-4 inline-flex flex-col items-start text-left text-sm text-muted-foreground font-mono gap-1">
                 <div className="font-semibold text-foreground mb-2 font-sans text-xs uppercase tracking-wider">

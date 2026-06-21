@@ -1,6 +1,11 @@
 # html-link-analyzer — Improvement Plan
 
-_Assessment from a fresh clone, June 2026._
+_Assessment from a fresh clone, June 2026. Updated as features land._
+
+## ✅ Shipped
+- **Domain-first grouping (June 2026)** — `parser-core` now attaches `host`/`domain` to every link, exposes `grouped_by_domain` and `unique_domains`, and the UI defaults to a Domain view with favicons, subdomain chips, and count histograms.
+- **URL-list input mode (June 2026)** — new `parseUrlList()` + `POST /api/parse/list` endpoint accept a freeform multi-line URL dump (tolerant of bullets, numbering, markdown links). The new "URL List" tab is the default landing surface in the app.
+
 
 ## What the project is today
 

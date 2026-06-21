@@ -23,6 +23,7 @@ import type {
   ErrorResponse,
   HealthStatus,
   ParseFileInput,
+  ParseListInput,
   ParseResult,
   ParseUrlInput
 } from './api.schemas';
@@ -259,5 +260,81 @@ export const useParseFile = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getParseFileMutationOptions(options));
+    }
+
+export const getParseListUrl = () => {
+
+
+
+
+  return `/api/parse/list`
+}
+
+/**
+ * Accepts a multi-line dump of URLs (one per line, tolerant of bullets,
+numbering, markdown links, and surrounding whitespace) and returns the
+same ParseResult shape as the HTML endpoints, with `grouped_by_domain`
+as the primary view. No DOM is involved so `grouped` will be empty.
+
+ * @summary Parse a freeform list of URLs
+ */
+export const parseList = async (parseListInput: ParseListInput, options?: RequestInit): Promise<ParseResult> => {
+
+  return customFetch<ParseResult>(getParseListUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      parseListInput,)
+  }
+);}
+
+
+
+
+export const getParseListMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof parseList>>, TError,{data: BodyType<ParseListInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof parseList>>, TError,{data: BodyType<ParseListInput>}, TContext> => {
+
+const mutationKey = ['parseList'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof parseList>>, {data: BodyType<ParseListInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  parseList(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ParseListMutationResult = NonNullable<Awaited<ReturnType<typeof parseList>>>
+    export type ParseListMutationBody = BodyType<ParseListInput>
+    export type ParseListMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Parse a freeform list of URLs
+ */
+export const useParseList = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof parseList>>, TError,{data: BodyType<ParseListInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof parseList>>,
+        TError,
+        {data: BodyType<ParseListInput>},
+        TContext
+      > => {
+      return useMutation(getParseListMutationOptions(options));
     }
 

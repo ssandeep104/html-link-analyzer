@@ -1,10 +1,25 @@
 import { forwardRef, useImperativeHandle, useState, useRef } from "react";
-import { useParseUrl, useParseFile, ParseResult } from "@workspace/api-client-react";
+import {
+  useParseUrl,
+  useParseFile,
+  useParseList,
+  ParseResult,
+} from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Globe, FileCode, Search, UploadCloud, Loader2, Link as LinkIcon, AlertCircle } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Globe,
+  FileCode,
+  ListTree,
+  Search,
+  UploadCloud,
+  Loader2,
+  Link as LinkIcon,
+  AlertCircle,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -21,14 +36,19 @@ export const InputPanel = forwardRef<InputPanelHandle, InputPanelProps>(
   function InputPanel({ onParse }, ref) {
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [urlListText, setUrlListText] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { toast } = useToast();
   const parseUrlMutation = useParseUrl();
   const parseFileMutation = useParseFile();
+  const parseListMutation = useParseList();
 
-  const isPending = parseUrlMutation.isPending || parseFileMutation.isPending;
+  const isPending =
+    parseUrlMutation.isPending ||
+    parseFileMutation.isPending ||
+    parseListMutation.isPending;
 
   useImperativeHandle(ref, () => ({
     setUrlAndSubmit: (newUrl: string) => {
@@ -52,7 +72,7 @@ export const InputPanel = forwardRef<InputPanelHandle, InputPanelProps>(
   const handleUrlSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!url) return;
-    
+
     parseUrlMutation.mutate({ data: { url } }, {
       onSuccess: (res) => onParse(res),
       onError: (err) => {
@@ -121,19 +141,42 @@ export const InputPanel = forwardRef<InputPanelHandle, InputPanelProps>(
     }
   };
 
+  const handleListSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!urlListText.trim()) return;
+    parseListMutation.mutate(
+      { data: { text: urlListText, source: "Pasted URL list" } },
+      {
+        onSuccess: (res) => onParse(res),
+        onError: (err) => {
+          toast({
+            variant: "destructive",
+            title: "Parsing Failed",
+            description: err.data?.error || "Failed to parse URL list",
+          });
+        },
+      },
+    );
+  };
+
   return (
     <Card className="border-border/50 shadow-sm bg-card/40 backdrop-blur">
       <CardContent className="p-6">
-        <Tabs defaultValue="url" className="w-full">
+        <Tabs defaultValue="list" className="w-full">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-6">
             <div>
               <h2 className="text-lg font-semibold tracking-tight flex items-center gap-2">
                 <Search className="w-5 h-5 text-muted-foreground" />
                 Target Source
               </h2>
-              <p className="text-sm text-muted-foreground">Select a URL, HTML file, or Safari Web Archive to analyze its links structure.</p>
+              <p className="text-sm text-muted-foreground">
+                Paste a list of URLs, fetch a single URL, or upload an HTML / Safari Web Archive file.
+              </p>
             </div>
             <TabsList className="bg-muted/50 border border-border/50">
+              <TabsTrigger value="list" className="gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm">
+                <ListTree className="w-4 h-4" /> URL List
+              </TabsTrigger>
               <TabsTrigger value="url" className="gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm">
                 <Globe className="w-4 h-4" /> URL
               </TabsTrigger>
@@ -142,6 +185,41 @@ export const InputPanel = forwardRef<InputPanelHandle, InputPanelProps>(
               </TabsTrigger>
             </TabsList>
           </div>
+
+          <TabsContent value="list" className="mt-0 outline-none">
+            <form onSubmit={handleListSubmit} className="space-y-3">
+              <Textarea
+                value={urlListText}
+                onChange={(e) => setUrlListText(e.target.value)}
+                placeholder={"https://github.com\nhttps://news.ycombinator.com\n- https://example.com\n[Wikipedia](https://en.wikipedia.org)"}
+                rows={8}
+                spellCheck={false}
+                className="bg-background font-mono text-sm border-border/50 focus-visible:ring-primary/30 resize-y min-h-[180px]"
+                disabled={isPending}
+              />
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-muted-foreground">
+                  One URL per line. Bullets, numbering, and <span className="font-mono">[label](url)</span> are tolerated.
+                </p>
+                <Button
+                  type="submit"
+                  size="lg"
+                  disabled={!urlListText.trim() || isPending}
+                  className="px-8 font-medium"
+                >
+                  {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Analyze List
+                </Button>
+              </div>
+            </form>
+            {parseListMutation.isError && (
+              <Alert variant="destructive" className="mt-4 bg-destructive/10 text-destructive border-destructive/20">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{parseListMutation.error?.data?.error || "An unknown error occurred"}</AlertDescription>
+              </Alert>
+            )}
+          </TabsContent>
 
           <TabsContent value="url" className="mt-0 outline-none">
             <form onSubmit={handleUrlSubmit} className="flex gap-3">

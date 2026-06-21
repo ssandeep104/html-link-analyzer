@@ -5,6 +5,7 @@
  * HTML Link Parser and Analyzer API
  * OpenAPI spec version: 0.1.0
  */
+import type { DomainGroup } from './domainGroup';
 import type { GroupedSection } from './groupedSection';
 import type { LinkMetrics } from './linkMetrics';
 import type { ParsedLink } from './parsedLink';
@@ -17,4 +18,5 @@ export interface ParseResult {
   links: ParsedLink[];
   metrics: LinkMetrics;
   grouped: GroupedSection[];
+  grouped_by_domain: DomainGroup[];
 }

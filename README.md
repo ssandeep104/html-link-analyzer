@@ -1,6 +1,16 @@
 # html-link-analyzer
 
-A web app that parses HTML documents and webarchive bundles to surface, classify, and audit every hyperlink they contain. Paste a URL or upload a file and get a structured breakdown of links by destination, scheme, rel/target safety, tracking parameters, and more.
+A web app that parses HTML documents, webarchive bundles, and freeform URL dumps to surface, classify, and audit every hyperlink they contain. Paste a list of URLs, fetch a single URL, or upload a file — results are grouped by **destination domain** by default, with section/heading grouping available for HTML inputs.
+
+### Inputs
+- **URL list** — paste a multi-line dump of URLs (one per line). Tolerates bullets, numbering, and `[label](url)` markdown links. No DOM required.
+- **URL** — fetch a single page server-side (SSRF-hardened) and analyze it.
+- **File** — upload `.html`, `.htm`, or Safari `.webarchive`.
+
+### Views
+- **Domain** (default) — links grouped by registrable domain, sorted by frequency, with subdomain breakdown and per-domain count bars.
+- **Section** — semantic-section → nearest-heading grouping for HTML inputs.
+- **Table** — flat sortable view with the new `domain` column.
 
 Live demo: deployed on Vercel (see the project's `vercel.json`).
 

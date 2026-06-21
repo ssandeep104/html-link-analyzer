@@ -1,5 +1,5 @@
 import { LinkMetrics } from "@workspace/api-client-react";
-import { Link2, ExternalLink, Hash, Workflow, Link } from "lucide-react";
+import { Link2, ExternalLink, Hash, Workflow, Link, Globe2 } from "lucide-react";
 
 interface MetricsDashboardProps {
   metrics: LinkMetrics;
@@ -14,6 +14,14 @@ export function MetricsDashboard({ metrics }: MetricsDashboardProps) {
       color: "text-foreground",
       bg: "bg-muted/50",
       border: "border-border/50",
+    },
+    {
+      title: "Domains",
+      value: metrics.unique_domains,
+      icon: <Globe2 className="w-4 h-4" />,
+      color: "text-sky-500",
+      bg: "bg-sky-500/10",
+      border: "border-sky-500/20",
     },
     {
       title: "Internal",
@@ -50,7 +58,7 @@ export function MetricsDashboard({ metrics }: MetricsDashboardProps) {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
       {cards.map((card, i) => (
         <div key={i} className={`rounded-xl border ${card.border} bg-card/40 backdrop-blur p-4 flex flex-col justify-between overflow-hidden relative group`}>
           <div className="flex items-center justify-between mb-4">
