@@ -37,6 +37,21 @@ export interface ParseFileInput {
   base_url?: string | null;
 }
 
+export interface ParseListInput {
+  /** Multi-line dump of URLs, one per line */
+  text: string;
+  /**
+     * Optional display label for the result (e.g. "clipboard")
+     * @nullable
+     */
+  source?: string | null;
+  /**
+     * Optional base URL for resolving relative entries
+     * @nullable
+     */
+  base_url?: string | null;
+}
+
 /**
  * Link category
  */
@@ -73,6 +88,10 @@ export interface ParsedLink {
   heading: string | null;
   /** DOM order position of the link */
   position: number;
+  /** Full hostname of the resolved URL ("" for anchors / non-HTTP schemes) */
+  host: string;
+  /** Registrable domain ("" for anchors / non-HTTP schemes) */
+  domain: string;
 }
 
 export interface LinkMetrics {
@@ -81,6 +100,8 @@ export interface LinkMetrics {
   external: number;
   anchor: number;
   special: number;
+  /** Number of distinct registrable domains across all links */
+  unique_domains: number;
 }
 
 export interface HeadingGroup {
@@ -98,6 +119,15 @@ export interface GroupedSection {
   headings: HeadingGroup[];
 }
 
+export interface DomainGroup {
+  /** Registrable domain (e.g. "github.com"). Empty string buckets links with no host. */
+  domain: string;
+  /** Distinct hostnames seen under this domain */
+  hosts: string[];
+  count: number;
+  links: ParsedLink[];
+}
+
 export interface ParseResult {
   /** The source identifier (URL or filename) */
   source: string;
@@ -106,6 +136,7 @@ export interface ParseResult {
   links: ParsedLink[];
   metrics: LinkMetrics;
   grouped: GroupedSection[];
+  grouped_by_domain: DomainGroup[];
 }
 
 export interface ErrorResponse {

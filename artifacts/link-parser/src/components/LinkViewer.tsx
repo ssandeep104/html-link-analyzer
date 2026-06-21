@@ -3,7 +3,17 @@ import { ParseResult, ParsedLink, ParsedLinkType } from "@workspace/api-client-r
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, FolderTree, Table2, Link2, ExternalLink, Hash, Workflow, ExternalLink as ExternalIcon } from "lucide-react";
+import {
+  Search,
+  FolderTree,
+  Table2,
+  Link2,
+  ExternalLink,
+  Hash,
+  Workflow,
+  ExternalLink as ExternalIcon,
+  Globe2,
+} from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +21,8 @@ import { Badge } from "@/components/ui/badge";
 interface LinkViewerProps {
   result: ParseResult;
 }
+
+type ViewMode = "domain" | "section" | "flat";
 
 const getTypeColor = (type: ParsedLinkType) => {
   switch (type) {
@@ -32,36 +44,90 @@ const getTypeIcon = (type: ParsedLinkType) => {
   }
 };
 
+function matchesFilters(link: ParsedLink, search: string, typeFilter: string): boolean {
+  const matchSearch =
+    !search ||
+    link.text.toLowerCase().includes(search.toLowerCase()) ||
+    link.href.toLowerCase().includes(search.toLowerCase()) ||
+    (link.domain ?? "").toLowerCase().includes(search.toLowerCase()) ||
+    (link.host ?? "").toLowerCase().includes(search.toLowerCase());
+  const matchType = typeFilter === "all" || link.type === typeFilter;
+  return matchSearch && matchType;
+}
+
+function LinkRow({ link, showDomain }: { link: ParsedLink; showDomain?: boolean }) {
+  return (
+    <div className="p-3 px-4 hover:bg-muted/30 transition-colors flex items-start sm:items-center gap-4 group">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-foreground truncate pr-4">
+          {link.text || <span className="text-muted-foreground italic">No text content</span>}
+        </p>
+        <div className="flex items-center gap-2 mt-1">
+          <span className="text-xs text-muted-foreground font-mono truncate max-w-full" title={link.href}>
+            {link.href}
+          </span>
+          {showDomain && link.host && link.host !== link.domain && (
+            <Badge variant="outline" className="font-mono text-[10px] rounded-sm px-1 py-0 border-border/40 text-muted-foreground">
+              {link.host}
+            </Badge>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-3 shrink-0">
+        <Badge variant="outline" className={`font-mono text-[10px] uppercase tracking-wider rounded-sm px-1.5 py-0 border ${getTypeColor(link.type)}`}>
+          {getTypeIcon(link.type)}
+          {link.type}
+        </Badge>
+        <a href={link.resolved_href} target="_blank" rel="noopener noreferrer" className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground">
+          <ExternalIcon className="w-4 h-4" />
+        </a>
+      </div>
+    </div>
+  );
+}
+
 export function LinkViewer({ result }: LinkViewerProps) {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [viewMode, setViewMode] = useState<"grouped" | "flat">("grouped");
+  // Domain is the default view — most useful for URL dumps and external-link audits.
+  const [viewMode, setViewMode] = useState<ViewMode>("domain");
 
-  const filteredLinks = useMemo(() => {
-    return result.links.filter(link => {
-      const matchSearch = link.text.toLowerCase().includes(search.toLowerCase()) || 
-                          link.href.toLowerCase().includes(search.toLowerCase());
-      const matchType = typeFilter === "all" || link.type === typeFilter;
-      return matchSearch && matchType;
-    });
-  }, [result.links, search, typeFilter]);
+  const filteredLinks = useMemo(
+    () => result.links.filter((l) => matchesFilters(l, search, typeFilter)),
+    [result.links, search, typeFilter],
+  );
+
+  const filteredDomainGroups = useMemo(() => {
+    return result.grouped_by_domain
+      .map((g) => ({
+        ...g,
+        links: g.links.filter((l) => matchesFilters(l, search, typeFilter)),
+      }))
+      .filter((g) => g.links.length > 0)
+      .map((g) => ({ ...g, count: g.links.length }));
+  }, [result.grouped_by_domain, search, typeFilter]);
+
+  const maxDomainCount = useMemo(
+    () => filteredDomainGroups.reduce((m, g) => Math.max(m, g.count), 0),
+    [filteredDomainGroups],
+  );
 
   const filteredGrouped = useMemo(() => {
-    if (!search && typeFilter === "all") return result.grouped;
-    
-    return result.grouped.map(section => {
-      const filteredHeadings = section.headings.map(h => ({
-        ...h,
-        links: h.links.filter(link => {
-          const matchSearch = link.text.toLowerCase().includes(search.toLowerCase()) || 
-                              link.href.toLowerCase().includes(search.toLowerCase());
-          const matchType = typeFilter === "all" || link.type === typeFilter;
-          return matchSearch && matchType;
-        })
-      })).filter(h => h.links.length > 0);
-      return { ...section, headings: filteredHeadings };
-    }).filter(s => s.headings.length > 0);
+    return result.grouped
+      .map((section) => {
+        const filteredHeadings = section.headings
+          .map((h) => ({
+            ...h,
+            links: h.links.filter((l) => matchesFilters(l, search, typeFilter)),
+          }))
+          .filter((h) => h.links.length > 0);
+        return { ...section, headings: filteredHeadings };
+      })
+      .filter((s) => s.headings.length > 0);
   }, [result.grouped, search, typeFilter]);
+
+  // If the result has no DOM grouping (URL-list mode), hide the Section tab.
+  const hasSectionGrouping = result.grouped.length > 0;
 
   return (
     <div className="flex flex-col h-full min-h-[600px]">
@@ -70,7 +136,7 @@ export function LinkViewer({ result }: LinkViewerProps) {
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Filter by text or href..."
+              placeholder="Filter by text, href, or domain..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 h-10 font-mono text-sm bg-background border-border/50"
@@ -89,12 +155,17 @@ export function LinkViewer({ result }: LinkViewerProps) {
             </SelectContent>
           </Select>
         </div>
-        
-        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="w-full sm:w-auto">
-          <TabsList className="grid w-full sm:w-auto grid-cols-2 bg-muted/50 border border-border/50">
-            <TabsTrigger value="grouped" className="gap-2 text-xs">
-              <FolderTree className="w-3.5 h-3.5" /> Grouped
+
+        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)} className="w-full sm:w-auto">
+          <TabsList className={`grid w-full sm:w-auto ${hasSectionGrouping ? "grid-cols-3" : "grid-cols-2"} bg-muted/50 border border-border/50`}>
+            <TabsTrigger value="domain" className="gap-2 text-xs">
+              <Globe2 className="w-3.5 h-3.5" /> Domain
             </TabsTrigger>
+            {hasSectionGrouping && (
+              <TabsTrigger value="section" className="gap-2 text-xs">
+                <FolderTree className="w-3.5 h-3.5" /> Section
+              </TabsTrigger>
+            )}
             <TabsTrigger value="flat" className="gap-2 text-xs">
               <Table2 className="w-3.5 h-3.5" /> Table
             </TabsTrigger>
@@ -109,7 +180,70 @@ export function LinkViewer({ result }: LinkViewerProps) {
             <p className="text-lg font-medium">No links found</p>
             <p className="text-sm">Try adjusting your filters or search query.</p>
           </div>
-        ) : viewMode === "grouped" ? (
+        ) : viewMode === "domain" ? (
+          <Accordion
+            type="multiple"
+            defaultValue={filteredDomainGroups.slice(0, 8).map((g) => g.domain || "(no-host)")}
+            className="space-y-3"
+          >
+            {filteredDomainGroups.map((group) => {
+              const key = group.domain || "(no-host)";
+              const widthPct = maxDomainCount > 0 ? Math.max(4, (group.count / maxDomainCount) * 100) : 0;
+              return (
+                <AccordionItem
+                  key={key}
+                  value={key}
+                  className="border border-border/50 rounded-lg bg-card overflow-hidden"
+                >
+                  <AccordionTrigger className="px-4 py-3 hover:bg-muted/30 transition-colors data-[state=open]:border-b data-[state=open]:border-border/50">
+                    <div className="flex items-center gap-3 w-full pr-4">
+                      {group.domain ? (
+                        <img
+                          src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(group.domain)}&sz=32`}
+                          alt=""
+                          width={16}
+                          height={16}
+                          className="rounded-sm flex-shrink-0"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+                          }}
+                        />
+                      ) : (
+                        <Hash className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      )}
+                      <span className="font-semibold text-foreground tracking-tight text-sm truncate">
+                        {group.domain || "Anchors & non-HTTP"}
+                      </span>
+                      {group.hosts.length > 1 && (
+                        <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0 border-border/40 text-muted-foreground">
+                          {group.hosts.length} hosts
+                        </Badge>
+                      )}
+                      <div className="flex-1 flex items-center gap-2 min-w-0">
+                        <div className="hidden sm:block flex-1 max-w-[200px] h-1.5 bg-muted/40 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary/60 rounded-full"
+                            style={{ width: `${widthPct}%` }}
+                          />
+                        </div>
+                      </div>
+                      <Badge variant="secondary" className="bg-muted text-muted-foreground font-mono text-xs rounded-full">
+                        {group.count}
+                      </Badge>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="p-0 bg-background/50">
+                    <div className="divide-y divide-border/20">
+                      {group.links.map((link) => (
+                        <LinkRow key={link.id} link={link} showDomain />
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
+          </Accordion>
+        ) : viewMode === "section" ? (
           <Accordion type="multiple" defaultValue={filteredGrouped.map(s => s.section)} className="space-y-4">
             {filteredGrouped.map((section, idx) => (
               <AccordionItem key={idx} value={section.section} className="border border-border/50 rounded-lg bg-card overflow-hidden">
@@ -131,23 +265,7 @@ export function LinkViewer({ result }: LinkViewerProps) {
                       )}
                       <div className="divide-y divide-border/20">
                         {heading.links.map(link => (
-                          <div key={link.id} className="p-3 px-4 hover:bg-muted/30 transition-colors flex items-start sm:items-center gap-4 group">
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium text-foreground truncate pr-4">{link.text || <span className="text-muted-foreground italic">No text content</span>}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="text-xs text-muted-foreground font-mono truncate max-w-full" title={link.href}>{link.href}</span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3 shrink-0">
-                              <Badge variant="outline" className={`font-mono text-[10px] uppercase tracking-wider rounded-sm px-1.5 py-0 border ${getTypeColor(link.type)}`}>
-                                {getTypeIcon(link.type)}
-                                {link.type}
-                              </Badge>
-                              <a href={link.resolved_href} target="_blank" rel="noopener noreferrer" className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground">
-                                <ExternalIcon className="w-4 h-4" />
-                              </a>
-                            </div>
-                          </div>
+                          <LinkRow key={link.id} link={link} />
                         ))}
                       </div>
                     </div>
@@ -162,10 +280,11 @@ export function LinkViewer({ result }: LinkViewerProps) {
               <TableHeader className="bg-muted/50">
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-12 font-mono text-xs text-center">#</TableHead>
-                  <TableHead className="w-[30%]">Text</TableHead>
+                  <TableHead className="w-[25%]">Text</TableHead>
                   <TableHead className="w-[30%]">Href</TableHead>
+                  <TableHead className="w-[18%]">Domain</TableHead>
                   <TableHead className="w-24">Type</TableHead>
-                  <TableHead className="w-32">Section</TableHead>
+                  <TableHead className="w-28">Section</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -178,6 +297,9 @@ export function LinkViewer({ result }: LinkViewerProps) {
                         {link.href}
                         <ExternalIcon className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </a>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground truncate max-w-[160px]" title={link.host || ""}>
+                      {link.domain || <span className="italic text-muted-foreground/60">—</span>}
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={`font-mono text-[10px] uppercase tracking-wider rounded-sm px-1.5 py-0 border ${getTypeColor(link.type)}`}>

@@ -12,7 +12,7 @@ export function ExportBar({ result }: ExportBarProps) {
 
   const handleExportCSV = () => {
     try {
-      const headers = ['id', 'text', 'href', 'resolved_href', 'type', 'section', 'heading', 'position'];
+      const headers = ['id', 'text', 'href', 'resolved_href', 'type', 'domain', 'host', 'section', 'heading', 'position'];
       const csvContent = [
         headers.join(','),
         ...result.links.map(link => 
@@ -79,6 +79,7 @@ export function ExportBar({ result }: ExportBarProps) {
                     <th>#</th>
                     <th>Text</th>
                     <th>Href</th>
+                    <th>Domain</th>
                     <th>Type</th>
                     <th>Section</th>
                 </tr>
@@ -89,6 +90,7 @@ export function ExportBar({ result }: ExportBarProps) {
                     <td class="mono">${link.position}</td>
                     <td>${link.text || '<em>No text</em>'}</td>
                     <td class="mono"><a href="${link.resolved_href}" target="_blank">${link.href}</a></td>
+                    <td class="mono" style="color:#a1a1aa;">${link.domain || '-'}</td>
                     <td><span class="badge ${link.type}">${link.type}</span></td>
                     <td style="color:#a1a1aa;text-transform:capitalize;">${link.section || '-'}</td>
                 </tr>

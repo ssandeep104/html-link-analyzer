@@ -36,14 +36,17 @@ export const ParseUrlResponse = zod.object({
   "type": zod.enum(['internal', 'external', 'anchor', 'special']).describe('Link category'),
   "section": zod.string().nullable().describe('Semantic section the link belongs to (header, nav, main, footer, etc.)'),
   "heading": zod.string().nullable().describe('Nearest preceding heading in the same section'),
-  "position": zod.number().describe('DOM order position of the link')
+  "position": zod.number().describe('DOM order position of the link'),
+  "host": zod.string().describe('Full hostname of the resolved URL (\"\" for anchors \/ non-HTTP schemes)'),
+  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)')
 })),
   "metrics": zod.object({
   "total": zod.number(),
   "internal": zod.number(),
   "external": zod.number(),
   "anchor": zod.number(),
-  "special": zod.number()
+  "special": zod.number(),
+  "unique_domains": zod.number().describe('Number of distinct registrable domains across all links')
 }),
   "grouped": zod.array(zod.object({
   "section": zod.string().describe('Name of the semantic section'),
@@ -57,8 +60,27 @@ export const ParseUrlResponse = zod.object({
   "type": zod.enum(['internal', 'external', 'anchor', 'special']).describe('Link category'),
   "section": zod.string().nullable().describe('Semantic section the link belongs to (header, nav, main, footer, etc.)'),
   "heading": zod.string().nullable().describe('Nearest preceding heading in the same section'),
-  "position": zod.number().describe('DOM order position of the link')
+  "position": zod.number().describe('DOM order position of the link'),
+  "host": zod.string().describe('Full hostname of the resolved URL (\"\" for anchors \/ non-HTTP schemes)'),
+  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)')
 }))
+}))
+})),
+  "grouped_by_domain": zod.array(zod.object({
+  "domain": zod.string().describe('Registrable domain (e.g. \"github.com\"). Empty string buckets links with no host.'),
+  "hosts": zod.array(zod.string()).describe('Distinct hostnames seen under this domain'),
+  "count": zod.number(),
+  "links": zod.array(zod.object({
+  "id": zod.number().describe('Sequential link ID'),
+  "text": zod.string().describe('Visible link text'),
+  "href": zod.string().describe('Original href attribute'),
+  "resolved_href": zod.string().describe('Absolute resolved URL'),
+  "type": zod.enum(['internal', 'external', 'anchor', 'special']).describe('Link category'),
+  "section": zod.string().nullable().describe('Semantic section the link belongs to (header, nav, main, footer, etc.)'),
+  "heading": zod.string().nullable().describe('Nearest preceding heading in the same section'),
+  "position": zod.number().describe('DOM order position of the link'),
+  "host": zod.string().describe('Full hostname of the resolved URL (\"\" for anchors \/ non-HTTP schemes)'),
+  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)')
 }))
 }))
 })
@@ -86,14 +108,17 @@ export const ParseFileResponse = zod.object({
   "type": zod.enum(['internal', 'external', 'anchor', 'special']).describe('Link category'),
   "section": zod.string().nullable().describe('Semantic section the link belongs to (header, nav, main, footer, etc.)'),
   "heading": zod.string().nullable().describe('Nearest preceding heading in the same section'),
-  "position": zod.number().describe('DOM order position of the link')
+  "position": zod.number().describe('DOM order position of the link'),
+  "host": zod.string().describe('Full hostname of the resolved URL (\"\" for anchors \/ non-HTTP schemes)'),
+  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)')
 })),
   "metrics": zod.object({
   "total": zod.number(),
   "internal": zod.number(),
   "external": zod.number(),
   "anchor": zod.number(),
-  "special": zod.number()
+  "special": zod.number(),
+  "unique_domains": zod.number().describe('Number of distinct registrable domains across all links')
 }),
   "grouped": zod.array(zod.object({
   "section": zod.string().describe('Name of the semantic section'),
@@ -107,8 +132,102 @@ export const ParseFileResponse = zod.object({
   "type": zod.enum(['internal', 'external', 'anchor', 'special']).describe('Link category'),
   "section": zod.string().nullable().describe('Semantic section the link belongs to (header, nav, main, footer, etc.)'),
   "heading": zod.string().nullable().describe('Nearest preceding heading in the same section'),
-  "position": zod.number().describe('DOM order position of the link')
+  "position": zod.number().describe('DOM order position of the link'),
+  "host": zod.string().describe('Full hostname of the resolved URL (\"\" for anchors \/ non-HTTP schemes)'),
+  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)')
 }))
+}))
+})),
+  "grouped_by_domain": zod.array(zod.object({
+  "domain": zod.string().describe('Registrable domain (e.g. \"github.com\"). Empty string buckets links with no host.'),
+  "hosts": zod.array(zod.string()).describe('Distinct hostnames seen under this domain'),
+  "count": zod.number(),
+  "links": zod.array(zod.object({
+  "id": zod.number().describe('Sequential link ID'),
+  "text": zod.string().describe('Visible link text'),
+  "href": zod.string().describe('Original href attribute'),
+  "resolved_href": zod.string().describe('Absolute resolved URL'),
+  "type": zod.enum(['internal', 'external', 'anchor', 'special']).describe('Link category'),
+  "section": zod.string().nullable().describe('Semantic section the link belongs to (header, nav, main, footer, etc.)'),
+  "heading": zod.string().nullable().describe('Nearest preceding heading in the same section'),
+  "position": zod.number().describe('DOM order position of the link'),
+  "host": zod.string().describe('Full hostname of the resolved URL (\"\" for anchors \/ non-HTTP schemes)'),
+  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)')
+}))
+}))
+})
+
+
+/**
+ * Accepts a multi-line dump of URLs (one per line, tolerant of bullets,
+numbering, markdown links, and surrounding whitespace) and returns the
+same ParseResult shape as the HTML endpoints, with `grouped_by_domain`
+as the primary view. No DOM is involved so `grouped` will be empty.
+
+ * @summary Parse a freeform list of URLs
+ */
+export const ParseListBody = zod.object({
+  "text": zod.string().describe('Multi-line dump of URLs, one per line'),
+  "source": zod.string().nullish().describe('Optional display label for the result (e.g. \"clipboard\")'),
+  "base_url": zod.string().nullish().describe('Optional base URL for resolving relative entries')
+})
+
+export const ParseListResponse = zod.object({
+  "source": zod.string().describe('The source identifier (URL or filename)'),
+  "base_url": zod.string().describe('Base URL used for resolving relative links'),
+  "links": zod.array(zod.object({
+  "id": zod.number().describe('Sequential link ID'),
+  "text": zod.string().describe('Visible link text'),
+  "href": zod.string().describe('Original href attribute'),
+  "resolved_href": zod.string().describe('Absolute resolved URL'),
+  "type": zod.enum(['internal', 'external', 'anchor', 'special']).describe('Link category'),
+  "section": zod.string().nullable().describe('Semantic section the link belongs to (header, nav, main, footer, etc.)'),
+  "heading": zod.string().nullable().describe('Nearest preceding heading in the same section'),
+  "position": zod.number().describe('DOM order position of the link'),
+  "host": zod.string().describe('Full hostname of the resolved URL (\"\" for anchors \/ non-HTTP schemes)'),
+  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)')
+})),
+  "metrics": zod.object({
+  "total": zod.number(),
+  "internal": zod.number(),
+  "external": zod.number(),
+  "anchor": zod.number(),
+  "special": zod.number(),
+  "unique_domains": zod.number().describe('Number of distinct registrable domains across all links')
+}),
+  "grouped": zod.array(zod.object({
+  "section": zod.string().describe('Name of the semantic section'),
+  "headings": zod.array(zod.object({
+  "heading": zod.string().nullable().describe('Heading text (null if no heading)'),
+  "links": zod.array(zod.object({
+  "id": zod.number().describe('Sequential link ID'),
+  "text": zod.string().describe('Visible link text'),
+  "href": zod.string().describe('Original href attribute'),
+  "resolved_href": zod.string().describe('Absolute resolved URL'),
+  "type": zod.enum(['internal', 'external', 'anchor', 'special']).describe('Link category'),
+  "section": zod.string().nullable().describe('Semantic section the link belongs to (header, nav, main, footer, etc.)'),
+  "heading": zod.string().nullable().describe('Nearest preceding heading in the same section'),
+  "position": zod.number().describe('DOM order position of the link'),
+  "host": zod.string().describe('Full hostname of the resolved URL (\"\" for anchors \/ non-HTTP schemes)'),
+  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)')
+}))
+}))
+})),
+  "grouped_by_domain": zod.array(zod.object({
+  "domain": zod.string().describe('Registrable domain (e.g. \"github.com\"). Empty string buckets links with no host.'),
+  "hosts": zod.array(zod.string()).describe('Distinct hostnames seen under this domain'),
+  "count": zod.number(),
+  "links": zod.array(zod.object({
+  "id": zod.number().describe('Sequential link ID'),
+  "text": zod.string().describe('Visible link text'),
+  "href": zod.string().describe('Original href attribute'),
+  "resolved_href": zod.string().describe('Absolute resolved URL'),
+  "type": zod.enum(['internal', 'external', 'anchor', 'special']).describe('Link category'),
+  "section": zod.string().nullable().describe('Semantic section the link belongs to (header, nav, main, footer, etc.)'),
+  "heading": zod.string().nullable().describe('Nearest preceding heading in the same section'),
+  "position": zod.number().describe('DOM order position of the link'),
+  "host": zod.string().describe('Full hostname of the resolved URL (\"\" for anchors \/ non-HTTP schemes)'),
+  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)')
 }))
 }))
 })

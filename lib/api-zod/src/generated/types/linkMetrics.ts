@@ -12,4 +12,6 @@ export interface LinkMetrics {
   external: number;
   anchor: number;
   special: number;
+  /** Number of distinct registrable domains across all links */
+  unique_domains: number;
 }

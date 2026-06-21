@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './domainGroup';
 export * from './errorResponse';
 export * from './groupedSection';
 export * from './headingGroup';
@@ -14,5 +15,6 @@ export * from './linkMetrics';
 export * from './parsedLink';
 export * from './parsedLinkType';
 export * from './parseFileInput';
+export * from './parseListInput';
 export * from './parseResult';
 export * from './parseUrlInput';

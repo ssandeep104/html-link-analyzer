@@ -30,4 +30,8 @@ export interface ParsedLink {
   heading: string | null;
   /** DOM order position of the link */
   position: number;
+  /** Full hostname of the resolved URL ("" for anchors / non-HTTP schemes) */
+  host: string;
+  /** Registrable domain ("" for anchors / non-HTTP schemes) */
+  domain: string;
 }
