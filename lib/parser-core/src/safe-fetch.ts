@@ -47,7 +47,7 @@ export class SafeFetchError extends Error {
 }
 
 const DEFAULT_USER_AGENT =
-  "Mozilla/5.0 (compatible; LinkScan/1.0; +https://github.com/ssandeep104/html-link-analyzer)";
+  "Mozilla/5.0 (compatible; LinkScan/1.0; +https://github.com/ssandeep104/linkscan)";
 
 const PRIVATE_V4_CIDRS: Array<[string, number]> = [
   ["0.0.0.0", 8], // "this network"

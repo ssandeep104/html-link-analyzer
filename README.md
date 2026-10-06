@@ -1,4 +1,4 @@
-# html-link-analyzer
+# LinkScan
 
 A web app that parses HTML documents, webarchive bundles, and freeform URL dumps to surface, classify, and audit every hyperlink they contain. Paste a list of URLs, fetch a single URL, or upload a file — results are grouped by **destination domain** by default, with section/heading grouping available for HTML inputs.
 
