@@ -5,6 +5,11 @@ import {
   safeFetch,
 } from "@workspace/parser-core";
 
+// This endpoint fans out to up to 20 page fetches; it needs the full
+// Hobby-plan duration budget. (Configured here instead of vercel.json because
+// per-file `functions` patterns don't match reliably.)
+export const maxDuration = 60;
+
 interface ParseListFetchBody {
   text?: string;
   source?: string | null;
