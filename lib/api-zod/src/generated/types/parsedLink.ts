@@ -34,4 +34,9 @@ export interface ParsedLink {
   host: string;
   /** Registrable domain ("" for anchors / non-HTTP schemes) */
   domain: string;
+  /**
+     * The page this link was extracted from; set only on batch (URL-list fetch) results
+     * @nullable
+     */
+  page_url?: string | null;
 }

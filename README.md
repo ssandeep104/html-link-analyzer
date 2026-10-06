@@ -3,7 +3,7 @@
 A web app that parses HTML documents, webarchive bundles, and freeform URL dumps to surface, classify, and audit every hyperlink they contain. Paste a list of URLs, fetch a single URL, or upload a file — results are grouped by **destination domain** by default, with section/heading grouping available for HTML inputs.
 
 ### Inputs
-- **URL list** — paste a multi-line dump of URLs (one per line). Tolerates bullets, numbering, and `[label](url)` markdown links. No DOM required.
+- **URL list** — paste a multi-line dump of URLs (one per line). Tolerates bullets, numbering, and `[label](url)` markdown links. With **Fetch each page** on (default), every page in the list is fetched one level deep and analyzed — results merge into one view with a per-page breakdown (max 20 URLs per run); one dead page never fails the batch. Turn it off for the fast path that just groups the pasted URLs by domain. No DOM required.
 - **URL** — fetch a single page server-side (SSRF-hardened) and analyze it.
 - **File** — upload `.html`, `.htm`, or Safari `.webarchive`.
 
@@ -21,6 +21,8 @@ Live demo: deployed on Vercel (see the project's `vercel.json`).
   - `GET  /api/healthz` — liveness check
   - `POST /api/parse/url` — fetches a URL with SSRF protection and parses its HTML
   - `POST /api/parse/file` — parses an uploaded HTML file or `.webarchive` bundle
+  - `POST /api/parse/list` — groups a freeform URL dump by domain (no fetching)
+  - `POST /api/parse/list-fetch` — fetches every URL in a list (max 20, 60 s budget) and merges each page's link analysis into one result
 - **Shared parser (`lib/parser-core`)** — pure TypeScript: cheerio for HTML, custom bplist reader for webarchive payloads, classifier that flags tracking params and unsafe `target="_blank"` patterns. 30 unit tests under vitest.
 - **OpenAPI contract (`lib/api-spec`)** — drives Orval-generated React Query hooks (`lib/api-client-react`) and Zod schemas (`lib/api-zod`) consumed by the frontend.
 

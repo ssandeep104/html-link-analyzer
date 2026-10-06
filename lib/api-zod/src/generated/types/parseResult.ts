@@ -8,6 +8,7 @@
 import type { DomainGroup } from './domainGroup';
 import type { GroupedSection } from './groupedSection';
 import type { LinkMetrics } from './linkMetrics';
+import type { PageAnalysis } from './pageAnalysis';
 import type { ParsedLink } from './parsedLink';
 
 export interface ParseResult {
@@ -19,4 +20,9 @@ export interface ParseResult {
   metrics: LinkMetrics;
   grouped: GroupedSection[];
   grouped_by_domain: DomainGroup[];
+  /**
+     * Per-page breakdown; present only on batch (URL-list fetch) results
+     * @nullable
+     */
+  pages?: PageAnalysis[] | null;
 }

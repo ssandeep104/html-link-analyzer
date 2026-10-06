@@ -9,11 +9,17 @@
       "runtime": "@vercel/node@3.2.29",
       "memory": 1024,
       "maxDuration": 15
+    },
+    "api/parse/list-fetch.ts": {
+      "runtime": "@vercel/node@3.2.29",
+      "memory": 1024,
+      "maxDuration": 60
     }
   },
   "rewrites": [
     { "source": "/api/parse/url", "destination": "/api/parse/url" },
     { "source": "/api/parse/file", "destination": "/api/parse/file" },
+    { "source": "/api/parse/list-fetch", "destination": "/api/parse/list-fetch" },
     { "source": "/api/healthz", "destination": "/api/healthz" }
   ],
   "headers": [

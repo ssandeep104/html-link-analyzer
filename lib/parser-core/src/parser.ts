@@ -44,6 +44,11 @@ export interface ParsedLink {
   host: string;
   /** Registrable domain, e.g. "bbc.co.uk" for "news.bbc.co.uk". "" if not applicable. */
   domain: string;
+  /**
+   * The page this link was extracted from. Set only by batch (URL-list fetch)
+   * results, where links from many pages are merged into one ParseResult.
+   */
+  page_url?: string;
 }
 
 export interface LinkMetrics {
@@ -84,6 +89,30 @@ export interface ParseResult {
   grouped: GroupedSection[];
   /** Domain → links, sorted by count desc then domain asc. */
   grouped_by_domain: DomainGroup[];
+  /**
+   * Per-page breakdown. Present only on batch (URL-list fetch) results, where
+   * one ParseResult aggregates the analysis of many pages.
+   */
+  pages?: PageAnalysis[];
+}
+
+/**
+ * One page's outcome inside a batch (URL-list fetch) result.
+ */
+export interface PageAnalysis {
+  /** The URL as given in the list (scheme-normalized). */
+  url: string;
+  status: "ok" | "error";
+  /** Final URL after redirects, when the fetch succeeded. */
+  final_url?: string;
+  /** Number of links extracted from the page, when the fetch succeeded. */
+  links?: number;
+  /** True when the page body was cut off by the size cap. */
+  truncated?: boolean;
+  /** Human-readable failure reason, when status is "error". */
+  error?: string;
+  /** Machine-readable failure code (e.g. TIMEOUT, BLOCKED_HOST), when known. */
+  code?: string;
 }
 
 type CheerioAPI = ReturnType<typeof cheerio.load>;
@@ -147,7 +176,7 @@ function findPrecedingHeading(
 }
 
 /** Group a flat link array by registrable domain, sorted by count desc. */
-function buildDomainGroups(links: ParsedLink[]): DomainGroup[] {
+export function buildDomainGroups(links: ParsedLink[]): DomainGroup[] {
   const map = new Map<string, { hosts: Set<string>; links: ParsedLink[] }>();
   for (const link of links) {
     const key = link.domain;
@@ -175,7 +204,7 @@ function buildDomainGroups(links: ParsedLink[]): DomainGroup[] {
   return groups;
 }
 
-function computeMetrics(links: ParsedLink[]): LinkMetrics {
+export function computeMetrics(links: ParsedLink[]): LinkMetrics {
   const distinctDomains = new Set<string>();
   for (const l of links) if (l.domain) distinctDomains.add(l.domain);
   return {
@@ -348,29 +377,19 @@ export function parseUrlList(
   }
 
   const links: ParsedLink[] = [];
-  const seenResolved = new Set<string>();
   let position = 0;
 
-  for (const rawLine of text.split(/\r?\n/)) {
-    const entry = extractUrlFromLine(rawLine);
-    if (!entry) continue;
-
-    const href = entry.url;
-    const resolved = resolveHref(href, baseUrl);
-    // Skip exact dupes — bookmark dumps repeat constantly.
-    if (seenResolved.has(resolved)) continue;
-    seenResolved.add(resolved);
-
-    const type = classifyLink(href, baseHost);
-    const host = extractHost(resolved, baseUrl);
+  for (const entry of extractUrls(text, { baseUrl })) {
+    const type = classifyLink(entry.url, baseHost);
+    const host = extractHost(entry.resolved, baseUrl);
     const domain = host ? registrableDomain(stripWww(host)) : "";
 
     position += 1;
     links.push({
       id: position,
       text: entry.text === entry.url ? "" : entry.text,
-      href,
-      resolved_href: resolved,
+      href: entry.url,
+      resolved_href: entry.resolved,
       type,
       section: null,
       heading: null,
@@ -388,4 +407,44 @@ export function parseUrlList(
     grouped: [], // not meaningful without a DOM
     grouped_by_domain: buildDomainGroups(links),
   };
+}
+
+// ---------------------------------------------------------------------------
+// URL extraction (shared by parseUrlList and the batch fetcher)
+// ---------------------------------------------------------------------------
+
+export interface ExtractedUrl {
+  /** The URL as written in the dump (leading bullets / labels stripped). */
+  url: string;
+  /** Resolved against baseUrl (if given), dedupe key. */
+  resolved: string;
+  /** Original line/label text; equals url when the line had no label. */
+  text: string;
+}
+
+/**
+ * Pull the URL entries out of a freeform multi-line dump. Dedupe is by
+ * resolved URL, so `https://x.com` and `https://x.com/` collapse to one.
+ */
+export function extractUrls(
+  text: string,
+  opts: { baseUrl?: string } = {},
+): ExtractedUrl[] {
+  const baseUrl = opts.baseUrl ?? "";
+  const out: ExtractedUrl[] = [];
+  const seenResolved = new Set<string>();
+
+  for (const rawLine of text.split(/\r?\n/)) {
+    const entry = extractUrlFromLine(rawLine);
+    if (!entry) continue;
+
+    const resolved = resolveHref(entry.url, baseUrl);
+    // Skip exact dupes — bookmark dumps repeat constantly.
+    if (seenResolved.has(resolved)) continue;
+    seenResolved.add(resolved);
+
+    out.push({ url: entry.url, resolved, text: entry.text });
+  }
+
+  return out;
 }

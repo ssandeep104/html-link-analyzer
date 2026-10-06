@@ -3,6 +3,7 @@ import {
   useParseUrl,
   useParseFile,
   useParseList,
+  useParseListFetch,
   ParseResult,
 } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Globe,
   FileCode,
@@ -37,6 +39,7 @@ export const InputPanel = forwardRef<InputPanelHandle, InputPanelProps>(
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [urlListText, setUrlListText] = useState("");
+  const [fetchPages, setFetchPages] = useState(true);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -44,11 +47,13 @@ export const InputPanel = forwardRef<InputPanelHandle, InputPanelProps>(
   const parseUrlMutation = useParseUrl();
   const parseFileMutation = useParseFile();
   const parseListMutation = useParseList();
+  const parseListFetchMutation = useParseListFetch();
 
   const isPending =
     parseUrlMutation.isPending ||
     parseFileMutation.isPending ||
-    parseListMutation.isPending;
+    parseListMutation.isPending ||
+    parseListFetchMutation.isPending;
 
   useImperativeHandle(ref, () => ({
     setUrlAndSubmit: (newUrl: string) => {
@@ -144,20 +149,33 @@ export const InputPanel = forwardRef<InputPanelHandle, InputPanelProps>(
   const handleListSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!urlListText.trim()) return;
-    parseListMutation.mutate(
-      { data: { text: urlListText, source: "Pasted URL list" } },
-      {
-        onSuccess: (res) => onParse(res),
-        onError: (err) => {
-          toast({
-            variant: "destructive",
-            title: "Parsing Failed",
-            description: err.data?.error || "Failed to parse URL list",
-          });
-        },
+    const callbacks = {
+      onSuccess: (res: ParseResult) => onParse(res),
+      onError: (err: unknown) => {
+        const msg = (err as { data?: { error?: string } } | null)?.data?.error;
+        toast({
+          variant: "destructive",
+          title: "Parsing Failed",
+          description: msg || "Failed to parse URL list",
+        });
       },
-    );
+    };
+    if (fetchPages) {
+      // Fetch every page in the list one level deep and analyze each.
+      parseListFetchMutation.mutate(
+        { data: { text: urlListText, source: "Pasted URL list" } },
+        callbacks,
+      );
+    } else {
+      // Fast path: just group the pasted URLs by domain, no fetching.
+      parseListMutation.mutate(
+        { data: { text: urlListText, source: "Pasted URL list" } },
+        callbacks,
+      );
+    }
   };
+
+  const listError = parseListMutation.error ?? parseListFetchMutation.error;
 
   return (
     <Card className="border-border/50 shadow-sm bg-card/40 backdrop-blur">
@@ -197,10 +215,19 @@ export const InputPanel = forwardRef<InputPanelHandle, InputPanelProps>(
                 className="bg-background font-mono text-sm border-border/50 focus-visible:ring-primary/30 resize-y min-h-[180px]"
                 disabled={isPending}
               />
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
                 <p className="text-xs text-muted-foreground">
                   One URL per line. Bullets, numbering, and <span className="font-mono">[label](url)</span> are tolerated.
+                  {fetchPages ? " Each page is fetched and analyzed (max 20 URLs)." : " URLs are grouped by domain without fetching."}
                 </p>
+                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+                  <Checkbox
+                    checked={fetchPages}
+                    onCheckedChange={(v) => setFetchPages(v === true)}
+                    disabled={isPending}
+                  />
+                  Fetch each page
+                </label>
                 <Button
                   type="submit"
                   size="lg"
@@ -212,11 +239,11 @@ export const InputPanel = forwardRef<InputPanelHandle, InputPanelProps>(
                 </Button>
               </div>
             </form>
-            {parseListMutation.isError && (
+            {(parseListMutation.isError || parseListFetchMutation.isError) && (
               <Alert variant="destructive" className="mt-4 bg-destructive/10 text-destructive border-destructive/20">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{parseListMutation.error?.data?.error || "An unknown error occurred"}</AlertDescription>
+                <AlertDescription>{listError?.data?.error || "An unknown error occurred"}</AlertDescription>
               </Alert>
             )}
           </TabsContent>

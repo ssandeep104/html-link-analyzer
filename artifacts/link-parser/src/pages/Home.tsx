@@ -3,6 +3,7 @@ import { InputPanel, type InputPanelHandle } from "@/components/InputPanel";
 import { MetricsDashboard } from "@/components/MetricsDashboard";
 import { LinkViewer } from "@/components/LinkViewer";
 import { ExportBar } from "@/components/ExportBar";
+import { PageResults } from "@/components/PageResults";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ParseResult } from "@workspace/api-client-react";
 import { Terminal, Activity } from "lucide-react";
@@ -49,7 +50,11 @@ export default function Home() {
         {result ? (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
             <MetricsDashboard metrics={result.metrics} />
-            
+
+            {result.pages && result.pages.length > 0 && (
+              <PageResults pages={result.pages} />
+            )}
+
             <div className="bg-card border border-border/50 rounded-xl overflow-hidden shadow-sm flex flex-col">
               <div className="border-b border-border/50 bg-muted/30 p-4">
                 <ExportBar result={result} />

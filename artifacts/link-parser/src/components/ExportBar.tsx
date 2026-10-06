@@ -1,4 +1,4 @@
-import { ParseResult, ParsedLink, DomainGroup } from "@workspace/api-client-react";
+import { ParseResult, ParsedLink, DomainGroup, PageAnalysis } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Download, FileJson, FileCode2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -114,11 +114,12 @@ function renderSectionView(result: ParseResult): string {
 }
 
 function renderTableView(links: ParsedLink[]): string {
+  const showPage = links.some((l) => l.page_url);
   return `
     <table class="flat-table">
       <thead>
         <tr>
-          <th>#</th><th>Text</th><th>Href</th><th>Domain</th><th>Type</th><th>Section</th>
+          <th>#</th><th>Text</th><th>Href</th><th>Domain</th>${showPage ? "<th>Page</th>" : ""}<th>Type</th><th>Section</th>
         </tr>
       </thead>
       <tbody>
@@ -126,12 +127,13 @@ function renderTableView(links: ParsedLink[]): string {
           .map(
             (link) => `
           <tr data-search="${escapeAttr(
-            `${link.text} ${link.href} ${link.domain} ${link.host}`.toLowerCase(),
+            `${link.text} ${link.href} ${link.domain} ${link.host} ${link.page_url ?? ""}`.toLowerCase(),
           )}" data-type="${escapeAttr(link.type)}">
             <td class="mono">${link.position}</td>
             <td>${link.text ? escapeHtml(link.text) : '<em class="muted">No text</em>'}</td>
             <td class="mono"><a href="${escapeAttr(link.resolved_href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.href)}</a></td>
             <td class="mono muted">${escapeHtml(link.domain || "—")}</td>
+            ${showPage ? `<td class="mono muted">${escapeHtml(link.page_url || "—")}</td>` : ""}
             <td><span class="badge type-${escapeAttr(link.type)}">${escapeHtml(link.type)}</span></td>
             <td class="muted" style="text-transform:capitalize;">${escapeHtml(link.section || "—")}</td>
           </tr>
@@ -140,6 +142,35 @@ function renderTableView(links: ParsedLink[]): string {
           .join("")}
       </tbody>
     </table>
+  `;
+}
+
+function renderPagesSection(pages: PageAnalysis[]): string {
+  const ok = pages.filter((p) => p.status === "ok").length;
+  return `
+    <section style="margin-bottom:1.5rem;">
+      <h2 style="font-size:1rem;margin:0 0 0.75rem;">Pages analyzed <span class="muted">(${ok}/${pages.length} succeeded)</span></h2>
+      <table class="flat-table">
+        <thead>
+          <tr><th style="width:2rem;">#</th><th>Page</th><th style="width:6rem;">Status</th><th style="width:6rem;">Links</th><th>Error</th></tr>
+        </thead>
+        <tbody>
+          ${pages
+            .map(
+              (p, i) => `
+            <tr>
+              <td class="mono">${i + 1}</td>
+              <td class="mono"><a href="${escapeAttr(p.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(p.url)}</a></td>
+              <td><span class="badge type-${p.status === "ok" ? "internal" : "special"}">${p.status}</span></td>
+              <td class="mono">${p.links ?? "—"}</td>
+              <td class="muted">${escapeHtml(p.error || "—")}</td>
+            </tr>
+          `,
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </section>
   `;
 }
 
@@ -305,6 +336,8 @@ function buildHtmlReport(result: ParseResult): string {
     <div class="tile special"><div class="tile-label">Special</div><div class="tile-value">${m.special}</div></div>
   </section>
 
+  ${result.pages && result.pages.length > 0 ? renderPagesSection(result.pages) : ""}
+
   <div class="controls">
     <input type="search" id="search" placeholder="Filter by text, href, or domain..." autocomplete="off">
     <select id="typeFilter">
@@ -394,7 +427,7 @@ export function ExportBar({ result }: ExportBarProps) {
 
   const handleExportCSV = () => {
     try {
-      const headers = ['id', 'text', 'href', 'resolved_href', 'type', 'domain', 'host', 'section', 'heading', 'position'];
+      const headers = ['id', 'text', 'href', 'resolved_href', 'type', 'domain', 'host', 'section', 'heading', 'position', 'page_url'];
       const csvContent = [
         headers.join(','),
         ...result.links.map((link) =>

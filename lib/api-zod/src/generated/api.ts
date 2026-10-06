@@ -38,7 +38,8 @@ export const ParseUrlResponse = zod.object({
   "heading": zod.string().nullable().describe('Nearest preceding heading in the same section'),
   "position": zod.number().describe('DOM order position of the link'),
   "host": zod.string().describe('Full hostname of the resolved URL (\"\" for anchors \/ non-HTTP schemes)'),
-  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)')
+  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)'),
+  "page_url": zod.string().nullish().describe('The page this link was extracted from; set only on batch (URL-list fetch) results')
 })),
   "metrics": zod.object({
   "total": zod.number(),
@@ -62,7 +63,8 @@ export const ParseUrlResponse = zod.object({
   "heading": zod.string().nullable().describe('Nearest preceding heading in the same section'),
   "position": zod.number().describe('DOM order position of the link'),
   "host": zod.string().describe('Full hostname of the resolved URL (\"\" for anchors \/ non-HTTP schemes)'),
-  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)')
+  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)'),
+  "page_url": zod.string().nullish().describe('The page this link was extracted from; set only on batch (URL-list fetch) results')
 }))
 }))
 })),
@@ -80,9 +82,19 @@ export const ParseUrlResponse = zod.object({
   "heading": zod.string().nullable().describe('Nearest preceding heading in the same section'),
   "position": zod.number().describe('DOM order position of the link'),
   "host": zod.string().describe('Full hostname of the resolved URL (\"\" for anchors \/ non-HTTP schemes)'),
-  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)')
+  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)'),
+  "page_url": zod.string().nullish().describe('The page this link was extracted from; set only on batch (URL-list fetch) results')
 }))
-}))
+})),
+  "pages": zod.array(zod.object({
+  "url": zod.string().describe('The URL as given in the list (scheme-normalized)'),
+  "status": zod.enum(['ok', 'error']).describe('Whether the page was fetched and analyzed successfully'),
+  "final_url": zod.string().nullish().describe('Final URL after redirects, when the fetch succeeded'),
+  "links": zod.number().nullish().describe('Number of links extracted from the page, when the fetch succeeded'),
+  "truncated": zod.boolean().nullish().describe('True when the page body was cut off by the size cap'),
+  "error": zod.string().nullish().describe('Human-readable failure reason, when status is \"error\"'),
+  "code": zod.string().nullish().describe('Machine-readable failure code (e.g. TIMEOUT, BLOCKED_HOST), when known')
+})).nullish().describe('Per-page breakdown; present only on batch (URL-list fetch) results')
 })
 
 
@@ -110,7 +122,8 @@ export const ParseFileResponse = zod.object({
   "heading": zod.string().nullable().describe('Nearest preceding heading in the same section'),
   "position": zod.number().describe('DOM order position of the link'),
   "host": zod.string().describe('Full hostname of the resolved URL (\"\" for anchors \/ non-HTTP schemes)'),
-  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)')
+  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)'),
+  "page_url": zod.string().nullish().describe('The page this link was extracted from; set only on batch (URL-list fetch) results')
 })),
   "metrics": zod.object({
   "total": zod.number(),
@@ -134,7 +147,8 @@ export const ParseFileResponse = zod.object({
   "heading": zod.string().nullable().describe('Nearest preceding heading in the same section'),
   "position": zod.number().describe('DOM order position of the link'),
   "host": zod.string().describe('Full hostname of the resolved URL (\"\" for anchors \/ non-HTTP schemes)'),
-  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)')
+  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)'),
+  "page_url": zod.string().nullish().describe('The page this link was extracted from; set only on batch (URL-list fetch) results')
 }))
 }))
 })),
@@ -152,9 +166,19 @@ export const ParseFileResponse = zod.object({
   "heading": zod.string().nullable().describe('Nearest preceding heading in the same section'),
   "position": zod.number().describe('DOM order position of the link'),
   "host": zod.string().describe('Full hostname of the resolved URL (\"\" for anchors \/ non-HTTP schemes)'),
-  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)')
+  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)'),
+  "page_url": zod.string().nullish().describe('The page this link was extracted from; set only on batch (URL-list fetch) results')
 }))
-}))
+})),
+  "pages": zod.array(zod.object({
+  "url": zod.string().describe('The URL as given in the list (scheme-normalized)'),
+  "status": zod.enum(['ok', 'error']).describe('Whether the page was fetched and analyzed successfully'),
+  "final_url": zod.string().nullish().describe('Final URL after redirects, when the fetch succeeded'),
+  "links": zod.number().nullish().describe('Number of links extracted from the page, when the fetch succeeded'),
+  "truncated": zod.boolean().nullish().describe('True when the page body was cut off by the size cap'),
+  "error": zod.string().nullish().describe('Human-readable failure reason, when status is \"error\"'),
+  "code": zod.string().nullish().describe('Machine-readable failure code (e.g. TIMEOUT, BLOCKED_HOST), when known')
+})).nullish().describe('Per-page breakdown; present only on batch (URL-list fetch) results')
 })
 
 
@@ -185,7 +209,8 @@ export const ParseListResponse = zod.object({
   "heading": zod.string().nullable().describe('Nearest preceding heading in the same section'),
   "position": zod.number().describe('DOM order position of the link'),
   "host": zod.string().describe('Full hostname of the resolved URL (\"\" for anchors \/ non-HTTP schemes)'),
-  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)')
+  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)'),
+  "page_url": zod.string().nullish().describe('The page this link was extracted from; set only on batch (URL-list fetch) results')
 })),
   "metrics": zod.object({
   "total": zod.number(),
@@ -209,7 +234,8 @@ export const ParseListResponse = zod.object({
   "heading": zod.string().nullable().describe('Nearest preceding heading in the same section'),
   "position": zod.number().describe('DOM order position of the link'),
   "host": zod.string().describe('Full hostname of the resolved URL (\"\" for anchors \/ non-HTTP schemes)'),
-  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)')
+  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)'),
+  "page_url": zod.string().nullish().describe('The page this link was extracted from; set only on batch (URL-list fetch) results')
 }))
 }))
 })),
@@ -227,9 +253,108 @@ export const ParseListResponse = zod.object({
   "heading": zod.string().nullable().describe('Nearest preceding heading in the same section'),
   "position": zod.number().describe('DOM order position of the link'),
   "host": zod.string().describe('Full hostname of the resolved URL (\"\" for anchors \/ non-HTTP schemes)'),
-  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)')
+  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)'),
+  "page_url": zod.string().nullish().describe('The page this link was extracted from; set only on batch (URL-list fetch) results')
+}))
+})),
+  "pages": zod.array(zod.object({
+  "url": zod.string().describe('The URL as given in the list (scheme-normalized)'),
+  "status": zod.enum(['ok', 'error']).describe('Whether the page was fetched and analyzed successfully'),
+  "final_url": zod.string().nullish().describe('Final URL after redirects, when the fetch succeeded'),
+  "links": zod.number().nullish().describe('Number of links extracted from the page, when the fetch succeeded'),
+  "truncated": zod.boolean().nullish().describe('True when the page body was cut off by the size cap'),
+  "error": zod.string().nullish().describe('Human-readable failure reason, when status is \"error\"'),
+  "code": zod.string().nullish().describe('Machine-readable failure code (e.g. TIMEOUT, BLOCKED_HOST), when known')
+})).nullish().describe('Per-page breakdown; present only on batch (URL-list fetch) results')
+})
+
+
+/**
+ * Accepts a multi-line dump of URLs (one per line, tolerant of bullets,
+numbering, markdown links, and surrounding whitespace), fetches each
+page one level deep with SSRF protection, and runs the link analyzer
+over every page. Returns one combined ParseResult: all links merged
+(each stamped with the page it came from via `page_url`) plus a
+`pages` breakdown with per-page status, link counts, and errors.
+A single dead page never fails the batch. Maximum 20 URLs per call.
+
+ * @summary Fetch each URL in a list and parse every page
+ */
+export const ParseListFetchBody = zod.object({
+  "text": zod.string().describe('Multi-line dump of URLs, one per line (max 20 fetched per call)'),
+  "source": zod.string().nullish().describe('Optional display label for the result (e.g. \"clipboard\")')
+})
+
+export const ParseListFetchResponse = zod.object({
+  "source": zod.string().describe('The source identifier (URL or filename)'),
+  "base_url": zod.string().describe('Base URL used for resolving relative links'),
+  "links": zod.array(zod.object({
+  "id": zod.number().describe('Sequential link ID'),
+  "text": zod.string().describe('Visible link text'),
+  "href": zod.string().describe('Original href attribute'),
+  "resolved_href": zod.string().describe('Absolute resolved URL'),
+  "type": zod.enum(['internal', 'external', 'anchor', 'special']).describe('Link category'),
+  "section": zod.string().nullable().describe('Semantic section the link belongs to (header, nav, main, footer, etc.)'),
+  "heading": zod.string().nullable().describe('Nearest preceding heading in the same section'),
+  "position": zod.number().describe('DOM order position of the link'),
+  "host": zod.string().describe('Full hostname of the resolved URL (\"\" for anchors \/ non-HTTP schemes)'),
+  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)'),
+  "page_url": zod.string().nullish().describe('The page this link was extracted from; set only on batch (URL-list fetch) results')
+})),
+  "metrics": zod.object({
+  "total": zod.number(),
+  "internal": zod.number(),
+  "external": zod.number(),
+  "anchor": zod.number(),
+  "special": zod.number(),
+  "unique_domains": zod.number().describe('Number of distinct registrable domains across all links')
+}),
+  "grouped": zod.array(zod.object({
+  "section": zod.string().describe('Name of the semantic section'),
+  "headings": zod.array(zod.object({
+  "heading": zod.string().nullable().describe('Heading text (null if no heading)'),
+  "links": zod.array(zod.object({
+  "id": zod.number().describe('Sequential link ID'),
+  "text": zod.string().describe('Visible link text'),
+  "href": zod.string().describe('Original href attribute'),
+  "resolved_href": zod.string().describe('Absolute resolved URL'),
+  "type": zod.enum(['internal', 'external', 'anchor', 'special']).describe('Link category'),
+  "section": zod.string().nullable().describe('Semantic section the link belongs to (header, nav, main, footer, etc.)'),
+  "heading": zod.string().nullable().describe('Nearest preceding heading in the same section'),
+  "position": zod.number().describe('DOM order position of the link'),
+  "host": zod.string().describe('Full hostname of the resolved URL (\"\" for anchors \/ non-HTTP schemes)'),
+  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)'),
+  "page_url": zod.string().nullish().describe('The page this link was extracted from; set only on batch (URL-list fetch) results')
 }))
 }))
+})),
+  "grouped_by_domain": zod.array(zod.object({
+  "domain": zod.string().describe('Registrable domain (e.g. \"github.com\"). Empty string buckets links with no host.'),
+  "hosts": zod.array(zod.string()).describe('Distinct hostnames seen under this domain'),
+  "count": zod.number(),
+  "links": zod.array(zod.object({
+  "id": zod.number().describe('Sequential link ID'),
+  "text": zod.string().describe('Visible link text'),
+  "href": zod.string().describe('Original href attribute'),
+  "resolved_href": zod.string().describe('Absolute resolved URL'),
+  "type": zod.enum(['internal', 'external', 'anchor', 'special']).describe('Link category'),
+  "section": zod.string().nullable().describe('Semantic section the link belongs to (header, nav, main, footer, etc.)'),
+  "heading": zod.string().nullable().describe('Nearest preceding heading in the same section'),
+  "position": zod.number().describe('DOM order position of the link'),
+  "host": zod.string().describe('Full hostname of the resolved URL (\"\" for anchors \/ non-HTTP schemes)'),
+  "domain": zod.string().describe('Registrable domain (\"\" for anchors \/ non-HTTP schemes)'),
+  "page_url": zod.string().nullish().describe('The page this link was extracted from; set only on batch (URL-list fetch) results')
+}))
+})),
+  "pages": zod.array(zod.object({
+  "url": zod.string().describe('The URL as given in the list (scheme-normalized)'),
+  "status": zod.enum(['ok', 'error']).describe('Whether the page was fetched and analyzed successfully'),
+  "final_url": zod.string().nullish().describe('Final URL after redirects, when the fetch succeeded'),
+  "links": zod.number().nullish().describe('Number of links extracted from the page, when the fetch succeeded'),
+  "truncated": zod.boolean().nullish().describe('True when the page body was cut off by the size cap'),
+  "error": zod.string().nullish().describe('Human-readable failure reason, when status is \"error\"'),
+  "code": zod.string().nullish().describe('Machine-readable failure code (e.g. TIMEOUT, BLOCKED_HOST), when known')
+})).nullish().describe('Per-page breakdown; present only on batch (URL-list fetch) results')
 })
 
 

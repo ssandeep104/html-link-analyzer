@@ -110,6 +110,38 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /parse/list-fetch:
+    post:
+      operationId: parseListFetch
+      tags: [parser]
+      summary: Fetch each URL in a list and parse every page
+      description: |
+        Accepts a multi-line dump of URLs (one per line, tolerant of bullets,
+        numbering, markdown links, and surrounding whitespace), fetches each
+        page one level deep with SSRF protection, and runs the link analyzer
+        over every page. Returns one combined ParseResult: all links merged
+        (each stamped with the page it came from via `page_url`) plus a
+        `pages` breakdown with per-page status, link counts, and errors.
+        A single dead page never fails the batch. Maximum 20 URLs per call.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParseListFetchInput"
+      responses:
+        "200":
+          description: Combined parsed link results for all pages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParseResult"
+        "400":
+          description: Bad request (empty text, no URLs found, or too many URLs)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -186,6 +218,50 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DomainGroup"
+        pages:
+          type: ["array", "null"]
+          items:
+            $ref: "#/components/schemas/PageAnalysis"
+          description: Per-page breakdown; present only on batch (URL-list fetch) results
+    PageAnalysis:
+      type: object
+      required:
+        - url
+        - status
+      properties:
+        url:
+          type: string
+          description: The URL as given in the list (scheme-normalized)
+        status:
+          type: string
+          enum: [ok, error]
+          description: Whether the page was fetched and analyzed successfully
+        final_url:
+          type: ["string", "null"]
+          description: Final URL after redirects, when the fetch succeeded
+        links:
+          type: ["integer", "null"]
+          description: Number of links extracted from the page, when the fetch succeeded
+        truncated:
+          type: ["boolean", "null"]
+          description: True when the page body was cut off by the size cap
+        error:
+          type: ["string", "null"]
+          description: Human-readable failure reason, when status is "error"
+        code:
+          type: ["string", "null"]
+          description: Machine-readable failure code (e.g. TIMEOUT, BLOCKED_HOST), when known
+    ParseListFetchInput:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          description: Multi-line dump of URLs, one per line (max 20 fetched per call)
+        source:
+          type: ["string", "null"]
+          description: Optional display label for the result (e.g. "clipboard")
     ParsedLink:
       type: object
       required:
@@ -231,6 +307,9 @@ components:
         domain:
           type: string
           description: Registrable domain ("" for anchors / non-HTTP schemes)
+        page_url:
+          type: ["string", "null"]
+          description: The page this link was extracted from; set only on batch (URL-list fetch) results
     LinkMetrics:
       type: object
       required:

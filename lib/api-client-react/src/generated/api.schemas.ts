@@ -92,6 +92,11 @@ export interface ParsedLink {
   host: string;
   /** Registrable domain ("" for anchors / non-HTTP schemes) */
   domain: string;
+  /**
+     * The page this link was extracted from; set only on batch (URL-list fetch) results
+     * @nullable
+     */
+  page_url?: string | null;
 }
 
 export interface LinkMetrics {
@@ -128,6 +133,49 @@ export interface DomainGroup {
   links: ParsedLink[];
 }
 
+/**
+ * Whether the page was fetched and analyzed successfully
+ */
+export type PageAnalysisStatus = typeof PageAnalysisStatus[keyof typeof PageAnalysisStatus];
+
+
+export const PageAnalysisStatus = {
+  ok: 'ok',
+  error: 'error',
+} as const;
+
+export interface PageAnalysis {
+  /** The URL as given in the list (scheme-normalized) */
+  url: string;
+  /** Whether the page was fetched and analyzed successfully */
+  status: PageAnalysisStatus;
+  /**
+     * Final URL after redirects, when the fetch succeeded
+     * @nullable
+     */
+  final_url?: string | null;
+  /**
+     * Number of links extracted from the page, when the fetch succeeded
+     * @nullable
+     */
+  links?: number | null;
+  /**
+     * True when the page body was cut off by the size cap
+     * @nullable
+     */
+  truncated?: boolean | null;
+  /**
+     * Human-readable failure reason, when status is "error"
+     * @nullable
+     */
+  error?: string | null;
+  /**
+     * Machine-readable failure code (e.g. TIMEOUT, BLOCKED_HOST), when known
+     * @nullable
+     */
+  code?: string | null;
+}
+
 export interface ParseResult {
   /** The source identifier (URL or filename) */
   source: string;
@@ -137,6 +185,21 @@ export interface ParseResult {
   metrics: LinkMetrics;
   grouped: GroupedSection[];
   grouped_by_domain: DomainGroup[];
+  /**
+     * Per-page breakdown; present only on batch (URL-list fetch) results
+     * @nullable
+     */
+  pages?: PageAnalysis[] | null;
+}
+
+export interface ParseListFetchInput {
+  /** Multi-line dump of URLs, one per line (max 20 fetched per call) */
+  text: string;
+  /**
+     * Optional display label for the result (e.g. "clipboard")
+     * @nullable
+     */
+  source?: string | null;
 }
 
 export interface ErrorResponse {

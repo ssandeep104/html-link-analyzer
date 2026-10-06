@@ -23,6 +23,7 @@ import type {
   ErrorResponse,
   HealthStatus,
   ParseFileInput,
+  ParseListFetchInput,
   ParseListInput,
   ParseResult,
   ParseUrlInput
@@ -336,5 +337,84 @@ export const useParseList = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getParseListMutationOptions(options));
+    }
+
+export const getParseListFetchUrl = () => {
+
+
+
+
+  return `/api/parse/list-fetch`
+}
+
+/**
+ * Accepts a multi-line dump of URLs (one per line, tolerant of bullets,
+numbering, markdown links, and surrounding whitespace), fetches each
+page one level deep with SSRF protection, and runs the link analyzer
+over every page. Returns one combined ParseResult: all links merged
+(each stamped with the page it came from via `page_url`) plus a
+`pages` breakdown with per-page status, link counts, and errors.
+A single dead page never fails the batch. Maximum 20 URLs per call.
+
+ * @summary Fetch each URL in a list and parse every page
+ */
+export const parseListFetch = async (parseListFetchInput: ParseListFetchInput, options?: RequestInit): Promise<ParseResult> => {
+
+  return customFetch<ParseResult>(getParseListFetchUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      parseListFetchInput,)
+  }
+);}
+
+
+
+
+export const getParseListFetchMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof parseListFetch>>, TError,{data: BodyType<ParseListFetchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof parseListFetch>>, TError,{data: BodyType<ParseListFetchInput>}, TContext> => {
+
+const mutationKey = ['parseListFetch'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof parseListFetch>>, {data: BodyType<ParseListFetchInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  parseListFetch(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ParseListFetchMutationResult = NonNullable<Awaited<ReturnType<typeof parseListFetch>>>
+    export type ParseListFetchMutationBody = BodyType<ParseListFetchInput>
+    export type ParseListFetchMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Fetch each URL in a list and parse every page
+ */
+export const useParseListFetch = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof parseListFetch>>, TError,{data: BodyType<ParseListFetchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof parseListFetch>>,
+        TError,
+        {data: BodyType<ParseListFetchInput>},
+        TContext
+      > => {
+      return useMutation(getParseListFetchMutationOptions(options));
     }
 

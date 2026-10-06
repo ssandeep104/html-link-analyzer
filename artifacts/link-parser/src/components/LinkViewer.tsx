@@ -50,7 +50,8 @@ function matchesFilters(link: ParsedLink, search: string, typeFilter: string): b
     link.text.toLowerCase().includes(search.toLowerCase()) ||
     link.href.toLowerCase().includes(search.toLowerCase()) ||
     (link.domain ?? "").toLowerCase().includes(search.toLowerCase()) ||
-    (link.host ?? "").toLowerCase().includes(search.toLowerCase());
+    (link.host ?? "").toLowerCase().includes(search.toLowerCase()) ||
+    (link.page_url ?? "").toLowerCase().includes(search.toLowerCase());
   const matchType = typeFilter === "all" || link.type === typeFilter;
   return matchSearch && matchType;
 }
@@ -128,6 +129,12 @@ export function LinkViewer({ result }: LinkViewerProps) {
 
   // If the result has no DOM grouping (URL-list mode), hide the Section tab.
   const hasSectionGrouping = result.grouped.length > 0;
+
+  // Batch (URL-list fetch) results stamp every link with its source page.
+  const hasPageColumn = useMemo(
+    () => result.links.some((l) => !!l.page_url),
+    [result.links],
+  );
 
   return (
     <div className="flex flex-col h-full min-h-[600px]">
@@ -283,6 +290,7 @@ export function LinkViewer({ result }: LinkViewerProps) {
                   <TableHead className="w-[25%]">Text</TableHead>
                   <TableHead className="w-[30%]">Href</TableHead>
                   <TableHead className="w-[18%]">Domain</TableHead>
+                  {hasPageColumn && <TableHead className="w-[20%]">Page</TableHead>}
                   <TableHead className="w-24">Type</TableHead>
                   <TableHead className="w-28">Section</TableHead>
                 </TableRow>
@@ -301,6 +309,11 @@ export function LinkViewer({ result }: LinkViewerProps) {
                     <TableCell className="font-mono text-xs text-muted-foreground truncate max-w-[160px]" title={link.host || ""}>
                       {link.domain || <span className="italic text-muted-foreground/60">—</span>}
                     </TableCell>
+                    {hasPageColumn && (
+                      <TableCell className="font-mono text-xs text-muted-foreground truncate max-w-[200px]" title={link.page_url || ""}>
+                        {link.page_url || <span className="italic text-muted-foreground/60">—</span>}
+                      </TableCell>
+                    )}
                     <TableCell>
                       <Badge variant="outline" className={`font-mono text-[10px] uppercase tracking-wider rounded-sm px-1.5 py-0 border ${getTypeColor(link.type)}`}>
                         {link.type}
