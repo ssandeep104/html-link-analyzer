@@ -1,0 +1,1 @@
+{"background_color":"#09090b","display":"standalone","icons":[{"sizes":"192x192","src":"/icon-192.png","type":"image/png"},{"sizes":"512x512","src":"/icon-512.png","type":"image/png"},{"purpose":"maskable","sizes":"512x512","src":"/icon-512-maskable.png","type":"image/png"}],"name":"LinkScan — HTML Link Analyzer","short_name":"LinkScan","start_url":".","theme_color":"#09090b"}
