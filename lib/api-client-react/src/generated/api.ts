@@ -354,7 +354,7 @@ page one level deep with SSRF protection, and runs the link analyzer
 over every page. Returns one combined ParseResult: all links merged
 (each stamped with the page it came from via `page_url`) plus a
 `pages` breakdown with per-page status, link counts, and errors.
-A single dead page never fails the batch. Maximum 20 URLs per call.
+A single dead page never fails the batch. Maximum 30 URLs per call.
 
  * @summary Fetch each URL in a list and parse every page
  */

@@ -122,7 +122,7 @@ paths:
         over every page. Returns one combined ParseResult: all links merged
         (each stamped with the page it came from via `page_url`) plus a
         `pages` breakdown with per-page status, link counts, and errors.
-        A single dead page never fails the batch. Maximum 20 URLs per call.
+        A single dead page never fails the batch. Maximum 30 URLs per call.
       requestBody:
         required: true
         content:
@@ -258,7 +258,7 @@ components:
       properties:
         text:
           type: string
-          description: Multi-line dump of URLs, one per line (max 20 fetched per call)
+          description: Multi-line dump of URLs, one per line (max 30 fetched per call)
         source:
           type: ["string", "null"]
           description: Optional display label for the result (e.g. "clipboard")

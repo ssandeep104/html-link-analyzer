@@ -16,7 +16,9 @@ interface ParseListFetchBody {
 }
 
 const MAX_CHARS = 2 * 1024 * 1024; // 2 MiB of pasted text
-const MAX_PAGES = 20; // fits a 60s serverless budget at concurrency 5
+const MAX_PAGES = 30; // raised temporarily from 20 for a larger-batch experiment;
+// note: worst case (every page hanging) can now exceed the 60s serverless
+// budget — typical runs finish far quicker
 const CONCURRENCY = 5;
 const FETCH_MAX_BYTES = 5 * 1024 * 1024;
 const FETCH_TIMEOUT_MS = 12_000;

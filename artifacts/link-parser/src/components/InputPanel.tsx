@@ -218,7 +218,7 @@ export const InputPanel = forwardRef<InputPanelHandle, InputPanelProps>(
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <p className="text-xs text-muted-foreground">
                   One URL per line. Bullets, numbering, and <span className="font-mono">[label](url)</span> are tolerated.
-                  {fetchPages ? " Each page is fetched and analyzed (max 20 URLs)." : " URLs are grouped by domain without fetching."}
+                  {fetchPages ? " Each page is fetched and analyzed (max 30 URLs)." : " URLs are grouped by domain without fetching."}
                 </p>
                 <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
                   <Checkbox

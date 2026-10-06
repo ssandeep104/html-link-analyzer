@@ -34,7 +34,7 @@ export type FetchPageFn = (url: string) => Promise<PageFetch>;
 export interface FetchAndParseOptions {
   /** Identifier surfaced in the result; defaults to "url-list". */
   source?: string;
-  /** Max pages to fetch in one call. Defaults to 20 (fits a 60s serverless budget at concurrency 5). */
+  /** Max pages to fetch in one call. Defaults to 30. */
   maxPages?: number;
   /** Simultaneous in-flight fetches. Defaults to 5. */
   concurrency?: number;
@@ -47,7 +47,7 @@ export interface BatchOutcome {
   skipped: number;
 }
 
-const DEFAULT_MAX_PAGES = 20;
+const DEFAULT_MAX_PAGES = 30;
 const DEFAULT_CONCURRENCY = 5;
 
 /**

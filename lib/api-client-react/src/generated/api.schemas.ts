@@ -193,7 +193,7 @@ export interface ParseResult {
 }
 
 export interface ParseListFetchInput {
-  /** Multi-line dump of URLs, one per line (max 20 fetched per call) */
+  /** Multi-line dump of URLs, one per line (max 30 fetched per call) */
   text: string;
   /**
      * Optional display label for the result (e.g. "clipboard")
