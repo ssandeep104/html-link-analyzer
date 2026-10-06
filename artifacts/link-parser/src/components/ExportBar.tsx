@@ -148,7 +148,7 @@ function renderTableView(links: ParsedLink[]): string {
 function renderPagesSection(pages: PageAnalysis[]): string {
   const ok = pages.filter((p) => p.status === "ok").length;
   return `
-    <section style="margin-bottom:1.5rem;">
+    <section id="pages-index" style="margin-bottom:1.5rem;">
       <h2 style="font-size:1rem;margin:0 0 0.75rem;">Pages analyzed <span class="muted">(${ok}/${pages.length} succeeded)</span></h2>
       <table class="flat-table">
         <thead>
@@ -160,7 +160,11 @@ function renderPagesSection(pages: PageAnalysis[]): string {
               (p, i) => `
             <tr>
               <td class="mono">${i + 1}</td>
-              <td class="mono"><a href="${escapeAttr(p.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(p.url)}</a></td>
+              <td class="mono">${
+                p.status === "ok"
+                  ? `<a href="#page-${i}">${escapeHtml(p.url)}</a> <a href="${escapeAttr(p.url)}" target="_blank" rel="noopener noreferrer" title="Open page">↗</a>`
+                  : `<a href="${escapeAttr(p.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(p.url)}</a>`
+              }</td>
               <td><span class="badge type-${p.status === "ok" ? "internal" : "special"}">${p.status}</span></td>
               <td class="mono">${p.links ?? "—"}</td>
               <td class="muted">${escapeHtml(p.error || "—")}</td>
@@ -174,7 +178,83 @@ function renderPagesSection(pages: PageAnalysis[]): string {
   `;
 }
 
-function buildHtmlReport(result: ParseResult): string {
+/** Group links by registrable domain, mirroring parser-core's ordering. */
+function groupLinksByDomain(links: ParsedLink[]): DomainGroup[] {
+  const map = new Map<string, DomainGroup>();
+  for (const l of links) {
+    const key = l.domain ?? "";
+    let g = map.get(key);
+    if (!g) {
+      g = { domain: key, hosts: [], count: 0, links: [] };
+      map.set(key, g);
+    }
+    if (l.host && !g.hosts.includes(l.host)) g.hosts.push(l.host);
+    g.links.push(l);
+    g.count += 1;
+  }
+  const groups = [...map.values()];
+  for (const g of groups) g.hosts.sort();
+  groups.sort((a, b) => {
+    if (b.count !== a.count) return b.count - a.count;
+    if (a.domain === "" && b.domain !== "") return 1;
+    if (b.domain === "" && a.domain !== "") return -1;
+    return a.domain.localeCompare(b.domain);
+  });
+  return groups;
+}
+
+/**
+ * Per-page drill-down sections for batch (URL-list fetch) reports.
+ * Each successfully fetched page gets a collapsed section with just its own
+ * links, grouped by domain. The pages index links here via #page-N anchors.
+ */
+function renderPerPageSections(result: ParseResult): string {
+  const pages = result.pages ?? [];
+  if (pages.length === 0) return "";
+
+  const byPage = new Map<string, ParsedLink[]>();
+  for (const l of result.links) {
+    const key = l.page_url ?? "";
+    if (!key) continue;
+    if (!byPage.has(key)) byPage.set(key, []);
+    byPage.get(key)!.push(l);
+  }
+
+  const sections = pages
+    .map((p, i) => {
+      if (p.status !== "ok") return "";
+      const links = byPage.get(p.url) ?? [];
+      const groups = groupLinksByDomain(links);
+      const maxCount = groups.reduce((mx, g) => Math.max(mx, g.count), 0);
+      return `
+      <details class="domain-card" id="page-${i}">
+        <summary class="domain-summary">
+          <span class="domain-name mono" style="font-size:0.8rem;word-break:break-all;">${escapeHtml(p.url)}</span>
+          <span class="bar-track"></span>
+          <span class="count-badge">${links.length} links</span>
+        </summary>
+        <div style="padding:0.75rem 1rem;border-bottom:1px solid var(--border);font-size:0.8rem;">
+          <a href="#pages-index">↑ Back to index</a>
+          <span class="muted" style="margin:0 0.5rem;">·</span>
+          <a href="${escapeAttr(p.url)}" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+        </div>
+        <div class="domain-links">
+          ${groups.length > 0 ? groups.map((g) => renderDomainGroup(g, maxCount)).join("") : `<div class="empty-state">No links found on this page.</div>`}
+        </div>
+      </details>`;
+    })
+    .join("");
+
+  if (!sections.trim()) return "";
+  return `
+    <section style="margin-bottom:1.5rem;">
+      <h2 style="font-size:1rem;margin:0 0 0.75rem;">Per-page reports</h2>
+      ${sections}
+    </section>
+  `;
+}
+
+export function buildHtmlReport(result: ParseResult): string {
   const m = result.metrics;
   const maxCount = result.grouped_by_domain.reduce((mx, g) => Math.max(mx, g.count), 0);
   const hasSection = result.grouped.length > 0;
@@ -338,6 +418,8 @@ function buildHtmlReport(result: ParseResult): string {
 
   ${result.pages && result.pages.length > 0 ? renderPagesSection(result.pages) : ""}
 
+  ${result.pages && result.pages.length > 0 ? renderPerPageSections(result) : ""}
+
   <div class="controls">
     <input type="search" id="search" placeholder="Filter by text, href, or domain..." autocomplete="off">
     <select id="typeFilter">
@@ -416,6 +498,18 @@ function buildHtmlReport(result: ParseResult): string {
       views.forEach(function (v) { v.classList.toggle('active', v.getAttribute('data-view') === target); });
     });
   });
+
+  // Deep-linking into per-page report sections: expand the target when the
+  // pages index links to it.
+  function openTargetFromHash() {
+    var h = window.location.hash || '';
+    if (h.indexOf('#page-') === 0) {
+      var el = document.getElementById(h.slice(1));
+      if (el && el.tagName === 'DETAILS') el.open = true;
+    }
+  }
+  window.addEventListener('hashchange', openTargetFromHash);
+  openTargetFromHash();
 })();
 </script>
 </body>
