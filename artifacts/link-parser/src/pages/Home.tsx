@@ -31,7 +31,7 @@ export default function Home() {
               <Terminal className="w-5 h-5" />
             </div>
             <h1 className="font-semibold text-foreground tracking-tight flex items-center gap-2">
-              LinkScan <span className="text-muted-foreground font-mono text-xs px-1.5 py-0.5 rounded-sm bg-muted/50 border border-border/50">v1.0.0</span>
+              LinkScope <span className="text-muted-foreground font-mono text-xs px-1.5 py-0.5 rounded-sm bg-muted/50 border border-border/50">v1.0.0</span>
             </h1>
           </div>
           <div className="flex items-center gap-4 text-xs text-muted-foreground font-mono">
