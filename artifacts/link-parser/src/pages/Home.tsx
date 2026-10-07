@@ -5,7 +5,7 @@ import { LinkViewer } from "@/components/LinkViewer";
 import { ExportBar } from "@/components/ExportBar";
 import { PageResults } from "@/components/PageResults";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { ParseResult } from "@workspace/api-client-react";
+import { ParseResult, ParsedLink } from "@workspace/api-client-react";
 import { Terminal, Activity } from "lucide-react";
 
 const EXAMPLE_URLS = [
@@ -16,6 +16,8 @@ const EXAMPLE_URLS = [
 
 export default function Home() {
   const [result, setResult] = useState<ParseResult | null>(null);
+  // The visible (filtered) links, reported up by LinkViewer — exports use these.
+  const [filteredLinks, setFilteredLinks] = useState<ParsedLink[] | null>(null);
   const inputRef = useRef<InputPanelHandle>(null);
 
   const tryExample = (url: string): void => {
@@ -57,10 +59,10 @@ export default function Home() {
 
             <div className="bg-card border border-border/50 rounded-xl overflow-hidden shadow-sm flex flex-col">
               <div className="border-b border-border/50 bg-muted/30 p-4">
-                <ExportBar result={result} />
+                <ExportBar result={result} links={filteredLinks ?? result.links} />
               </div>
               <div className="p-0">
-                <LinkViewer result={result} />
+                <LinkViewer result={result} onFilteredLinks={setFilteredLinks} />
               </div>
             </div>
           </div>

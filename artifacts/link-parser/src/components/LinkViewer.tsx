@@ -1,7 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { ParseResult, ParsedLink, ParsedLinkType } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { UrlFilterOp, URL_FILTER_OPS, matchesUrlFilter } from "@/lib/urlFilter";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Search,
@@ -13,6 +14,7 @@ import {
   Workflow,
   ExternalLink as ExternalIcon,
   Globe2,
+  X,
 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -20,6 +22,8 @@ import { Badge } from "@/components/ui/badge";
 
 interface LinkViewerProps {
   result: ParseResult;
+  /** Called whenever the visible (filtered) link set changes, so exports can use it. */
+  onFilteredLinks?: (links: ParsedLink[]) => void;
 }
 
 type ViewMode = "domain" | "section" | "flat";
@@ -44,7 +48,13 @@ const getTypeIcon = (type: ParsedLinkType) => {
   }
 };
 
-function matchesFilters(link: ParsedLink, search: string, typeFilter: string): boolean {
+function matchesFilters(
+  link: ParsedLink,
+  search: string,
+  typeFilter: string,
+  urlOp: UrlFilterOp,
+  urlValue: string,
+): boolean {
   const matchSearch =
     !search ||
     link.text.toLowerCase().includes(search.toLowerCase()) ||
@@ -53,7 +63,8 @@ function matchesFilters(link: ParsedLink, search: string, typeFilter: string): b
     (link.host ?? "").toLowerCase().includes(search.toLowerCase()) ||
     (link.page_url ?? "").toLowerCase().includes(search.toLowerCase());
   const matchType = typeFilter === "all" || link.type === typeFilter;
-  return matchSearch && matchType;
+  const matchUrl = matchesUrlFilter(link.href, urlOp, urlValue);
+  return matchSearch && matchType && matchUrl;
 }
 
 function LinkRow({ link, showDomain }: { link: ParsedLink; showDomain?: boolean }) {
@@ -87,26 +98,33 @@ function LinkRow({ link, showDomain }: { link: ParsedLink; showDomain?: boolean 
   );
 }
 
-export function LinkViewer({ result }: LinkViewerProps) {
+export function LinkViewer({ result, onFilteredLinks }: LinkViewerProps) {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [urlOp, setUrlOp] = useState<UrlFilterOp>("contains");
+  const [urlValue, setUrlValue] = useState("");
   // Domain is the default view — most useful for URL dumps and external-link audits.
   const [viewMode, setViewMode] = useState<ViewMode>("domain");
 
   const filteredLinks = useMemo(
-    () => result.links.filter((l) => matchesFilters(l, search, typeFilter)),
-    [result.links, search, typeFilter],
+    () => result.links.filter((l) => matchesFilters(l, search, typeFilter, urlOp, urlValue)),
+    [result.links, search, typeFilter, urlOp, urlValue],
   );
+
+  // Keep the exporter in sync with what's on screen.
+  useEffect(() => {
+    onFilteredLinks?.(filteredLinks);
+  }, [filteredLinks, onFilteredLinks]);
 
   const filteredDomainGroups = useMemo(() => {
     return result.grouped_by_domain
       .map((g) => ({
         ...g,
-        links: g.links.filter((l) => matchesFilters(l, search, typeFilter)),
+        links: g.links.filter((l) => matchesFilters(l, search, typeFilter, urlOp, urlValue)),
       }))
       .filter((g) => g.links.length > 0)
       .map((g) => ({ ...g, count: g.links.length }));
-  }, [result.grouped_by_domain, search, typeFilter]);
+  }, [result.grouped_by_domain, search, typeFilter, urlOp, urlValue]);
 
   const maxDomainCount = useMemo(
     () => filteredDomainGroups.reduce((m, g) => Math.max(m, g.count), 0),
@@ -119,13 +137,13 @@ export function LinkViewer({ result }: LinkViewerProps) {
         const filteredHeadings = section.headings
           .map((h) => ({
             ...h,
-            links: h.links.filter((l) => matchesFilters(l, search, typeFilter)),
+            links: h.links.filter((l) => matchesFilters(l, search, typeFilter, urlOp, urlValue)),
           }))
           .filter((h) => h.links.length > 0);
         return { ...section, headings: filteredHeadings };
       })
       .filter((s) => s.headings.length > 0);
-  }, [result.grouped, search, typeFilter]);
+  }, [result.grouped, search, typeFilter, urlOp, urlValue]);
 
   // If the result has no DOM grouping (URL-list mode), hide the Section tab.
   const hasSectionGrouping = result.grouped.length > 0;
@@ -138,9 +156,10 @@ export function LinkViewer({ result }: LinkViewerProps) {
 
   return (
     <div className="flex flex-col h-full min-h-[600px]">
-      <div className="p-4 border-b border-border/50 bg-card flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center sticky top-14 z-10 shadow-sm">
-        <div className="flex flex-1 gap-3 w-full sm:w-auto">
-          <div className="relative flex-1 max-w-md">
+      <div className="p-4 border-b border-border/50 bg-card flex flex-col gap-3 sticky top-14 z-10 shadow-sm">
+        <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+        <div className="flex flex-1 gap-3 w-full sm:w-auto flex-wrap items-center">
+          <div className="relative flex-1 max-w-md min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Filter by text, href, or domain..."
@@ -161,6 +180,38 @@ export function LinkViewer({ result }: LinkViewerProps) {
               <SelectItem value="special">Special</SelectItem>
             </SelectContent>
           </Select>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">URL</span>
+            <Select value={urlOp} onValueChange={(v) => setUrlOp(v as UrlFilterOp)}>
+              <SelectTrigger className="w-[130px] h-10 bg-background border-border/50" aria-label="URL match operator">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {URL_FILTER_OPS.map((op) => (
+                  <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="relative">
+              <Input
+                placeholder="e.g. /blog/ or .pdf"
+                value={urlValue}
+                onChange={(e) => setUrlValue(e.target.value)}
+                className="h-10 font-mono text-sm bg-background border-border/50 w-44 sm:w-52 pr-8"
+                aria-label="URL filter value"
+              />
+              {urlValue && (
+                <button
+                  type="button"
+                  onClick={() => setUrlValue("")}
+                  aria-label="Clear URL filter"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)} className="w-full sm:w-auto">
@@ -178,6 +229,7 @@ export function LinkViewer({ result }: LinkViewerProps) {
             </TabsTrigger>
           </TabsList>
         </Tabs>
+        </div>
       </div>
 
       <div className="flex-1 bg-background/50 overflow-auto p-4 sm:p-6">

@@ -5,6 +5,41 @@ import { useToast } from "@/hooks/use-toast";
 
 interface ExportBarProps {
   result: ParseResult;
+  /** The currently visible (filtered) links — exports contain exactly these. */
+  links: ParsedLink[];
+}
+
+/**
+ * Rebuild a coherent ParseResult around a filtered link set so exports
+ * (CSV/JSON/HTML) describe exactly what's on screen: recomputed metrics,
+ * domain groups and section groups; source pages stay for context.
+ */
+function buildFilteredResult(result: ParseResult, links: ParsedLink[]): ParseResult {
+  const ids = new Set(links.map((l) => l.id));
+  const grouped_by_domain = groupLinksByDomain(links);
+  const grouped = result.grouped
+    .map((section) => ({
+      ...section,
+      headings: section.headings
+        .map((h) => ({ ...h, links: h.links.filter((l) => ids.has(l.id)) }))
+        .filter((h) => h.links.length > 0),
+    }))
+    .filter((s) => s.headings.length > 0);
+  const countType = (t: string) => links.filter((l) => l.type === t).length;
+  return {
+    ...result,
+    links,
+    grouped,
+    grouped_by_domain,
+    metrics: {
+      total: links.length,
+      unique_domains: grouped_by_domain.length,
+      internal: countType("internal"),
+      external: countType("external"),
+      anchor: countType("anchor"),
+      special: countType("special"),
+    },
+  };
 }
 
 /** Escape any string for safe interpolation into the HTML report. */
@@ -516,15 +551,20 @@ export function buildHtmlReport(result: ParseResult): string {
 </html>`;
 }
 
-export function ExportBar({ result }: ExportBarProps) {
+export function ExportBar({ result, links }: ExportBarProps) {
   const { toast } = useToast();
+  const filtered = links.length !== result.links.length;
+  // The export envelope mirrors what's on screen: filtered links with
+  // recomputed metrics/groups; filename notes when it's a filtered export.
+  const exportResult = filtered ? buildFilteredResult(result, links) : result;
+  const suffix = filtered ? `-filtered-${Date.now()}` : `-${Date.now()}`;
 
   const handleExportCSV = () => {
     try {
       const headers = ['id', 'text', 'href', 'resolved_href', 'type', 'domain', 'host', 'section', 'heading', 'position', 'page_url'];
       const csvContent = [
         headers.join(','),
-        ...result.links.map((link) =>
+        ...exportResult.links.map((link) =>
           headers
             .map((header) => {
               const val = link[header as keyof typeof link];
@@ -536,7 +576,7 @@ export function ExportBar({ result }: ExportBarProps) {
       ].join('\n');
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      downloadBlob(blob, `links-export-${Date.now()}.csv`);
+      downloadBlob(blob, `links-export${suffix}.csv`);
     } catch {
       toast({ title: 'Export Failed', description: 'Failed to generate CSV', variant: 'destructive' });
     }
@@ -544,9 +584,9 @@ export function ExportBar({ result }: ExportBarProps) {
 
   const handleExportJSON = () => {
     try {
-      const jsonContent = JSON.stringify(result, null, 2);
+      const jsonContent = JSON.stringify(exportResult, null, 2);
       const blob = new Blob([jsonContent], { type: 'application/json' });
-      downloadBlob(blob, `links-export-${Date.now()}.json`);
+      downloadBlob(blob, `links-export${suffix}.json`);
     } catch {
       toast({ title: 'Export Failed', description: 'Failed to generate JSON', variant: 'destructive' });
     }
@@ -554,9 +594,9 @@ export function ExportBar({ result }: ExportBarProps) {
 
   const handleExportHTML = () => {
     try {
-      const htmlContent = buildHtmlReport(result);
+      const htmlContent = buildHtmlReport(exportResult);
       const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
-      downloadBlob(blob, `links-report-${Date.now()}.html`);
+      downloadBlob(blob, `links-report${suffix}.html`);
     } catch {
       toast({ title: 'Export Failed', description: 'Failed to generate HTML report', variant: 'destructive' });
     }
@@ -575,8 +615,10 @@ export function ExportBar({ result }: ExportBarProps) {
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-sm text-muted-foreground mr-2 font-medium">Export:</span>
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-sm text-muted-foreground mr-2 font-medium">
+        Export{filtered ? ` ${links.length} of ${result.links.length}` : ""}:
+      </span>
       <Button variant="outline" size="sm" onClick={handleExportCSV} className="h-8 gap-2 bg-background">
         <Download className="w-3.5 h-3.5" /> CSV
       </Button>
